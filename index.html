@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>澳門維修報工助手 - 專業版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .recording-pulse { animation: pulse 1.5s infinite; background-color: #ef4444 !important; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        /* 隱藏原生捲軸但保持功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 font-sans no-scrollbar">
+    <div class="max-w-md mx-auto space-y-4">
+        <div class="text-center py-2">
+            <h1 class="text-2xl font-black text-blue-800">👷‍♂️ 維修報工助手</h1>
+            <p class="text-xs text-gray-500 uppercase tracking-widest">Mobile Optimized / Local Logic</p>
+        </div>
+
+        <button id="micBtn" class="w-full py-10 bg-blue-600 text-white rounded-3xl shadow-xl transition-all flex flex-col items-center justify-center active:scale-95">
+            <span id="micIcon" class="text-5xl mb-2">🎤</span>
+            <span id="micText" class="font-bold text-lg">撳一下開始錄音</span>
+        </button>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-dashed border-gray-300">
+            <label class="text-xs font-bold text-gray-400 block mb-2">🔊 錄音原文內容：</label>
+            <div id="rawDisplay" class="text-gray-700 text-sm min-h-[80px] leading-relaxed">
+                等待錄音中...
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm">
+            <h2 class="text-sm font-black text-blue-600 border-b pb-2 mb-3">📋 整理後數據 (Excel 欄位)</h2>
+            <div id="fieldsDisplay" class="space-y-2 text-sm">
+                </div>
+        </div>
+
+        <div class="fixed bottom-6 left-4 right-4 max-w-md mx-auto">
+            <button onclick="copyMixedToClipboard()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-black shadow-2xl flex items-center justify-center gap-2 text-lg active:bg-green-700">
+                <span>📋</span> 複製到 WeChat
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 精簡後的 11 欄 (移除組別、編號、姓名、更次、部門)
+        const headers = ["日期", "工單號碼", "工作分類", "內容", "地點", "接單時間", "開始時間", "完工時間", "工單狀態", "Response Time", "Resolution Time"];
+        let fieldData = {};
+        let rawSpeech = "";
+        let isRecording = false;
+
+        // 初始化 UI
+        const fieldsDisplay = document.getElementById('fieldsDisplay');
+        headers.forEach(h => {
+            fieldsDisplay.innerHTML += `
+                <div class="flex justify-between border-b border-gray-50 py-1">
+                    <span class="text-gray-400">${h}:</span>
+                    <span id="field_${h}" class="font-bold text-gray-800">--</span>
+                </div>`;
+            fieldData[h] = "--";
+        });
+
+        // 語音識別
+        const recognition = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
+        recognition.lang = 'zh-HK';
+        recognition.continuous = true;
+
+        document.getElementById('micBtn').onclick = () => {
+            if (!isRecording) {
+                recognition.start();
+                document.getElementById('micBtn').classList.add('recording-pulse');
+                document.getElementById('micText').innerText = "🛑 講完再撳一次停止";
+                rawSpeech = "";
+            } else {
+                recognition.stop();
+                document.getElementById('micBtn').classList.remove('recording-pulse');
+                document.getElementById('micText').innerText = "🎤 撳一下開始錄音";
+            }
+            isRecording = !isRecording;
+        };
+
+        recognition.onresult = (event) => {
+            rawSpeech = event.results[event.results.length - 1][0].transcript;
+            document.getElementById('rawDisplay').innerText = rawSpeech;
+            analyzeSpeech(rawSpeech);
+        };
+
+        function analyzeSpeech(text) {
+            fieldData["日期"] = new Date().toLocaleDateString();
+            
+            // 地點提取 (識別樓層)
+            const floor = text.match(/(\d+)\s*(樓|f|字樓|房|點\d+)/i);
+            fieldData["地點"] = floor ? floor[0].replace('點', '.') : "--";
+
+            // 工作內容提取
+            const jobs = ["執油", "補水泥", "漏水", "換燈", "巡查", "保養", "維修"];
+            jobs.forEach(j => { if (text.includes(j)) fieldData["內容"] = j; });
+            fieldData["工作分類"] = text.match(/保養|巡查/) ? "PM" : "CMBD";
+
+            // 時間邏輯 (支援口語)
+            let times = [];
+            const timeRegex = /(\d{1,2})[:點](\d{1,2}|半|[一二三四五六七八九十]|[\d])/g;
+            let m;
+            while ((m = timeRegex.exec(text)) !== null) {
+                let hh = m[1].padStart(2, '0');
+                let mm = m[2];
+                if (mm === "半" || mm === "30") mm = "30";
+                else if (mm === "3" || mm === "15") mm = "15"; // 九點三
+                else if (mm === "6" || mm === "30") mm = "30"; // 九點六
+                else if (mm === "9" || mm === "45") mm = "45"; // 九點九
+                else if (mm.length === 1 && !isNaN(mm)) mm = String(parseInt(mm) * 5).padStart(2, '0');
+                else mm = String(mm).padStart(2, '0');
+                times.push(`${hh}:${mm}`);
+            }
+
+            if (times.length >= 2) {
+                fieldData["開始時間"] = times[0];
+                fieldData["完工時間"] = times[1];
+                const diff = (parseInt(times[1].split(':')[0])*60 + parseInt(times[1].split(':')[1])) - 
+                             (parseInt(times[0].split(':')[0])*60 + parseInt(times[0].split(':')[1]));
+                fieldData["Resolution Time"] = diff + " 分鐘";
+            }
+            
+            fieldData["工單狀態"] = "完成";
+            updateUI();
+        }
+
+        function updateUI() {
+            headers.forEach(h => {
+                document.getElementById(`field_${h}`).innerText = fieldData[h];
+            });
+        }
+
+        function copyMixedToClipboard() {
+            // 混合格式輸出：原文 + 分隔線 + 數據
+            let output = `【原始錄音原文】\n${rawSpeech}\n\n`;
+            output += `--------------------\n`;
+            output += `【整理後數據】\n`;
+            headers.forEach(h => {
+                output += `${h}: ${fieldData[h]}\n`;
+            });
+
+            navigator.clipboard.writeText(output).then(() => {
+                alert("✅ 成功複製！\n包含了原始錄音同埋 11 欄數據。");
+            });
+        }
+    </script>
+</body>
+</html>
