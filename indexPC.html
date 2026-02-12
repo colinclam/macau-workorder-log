@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>澳門維修報工助手 — Speech → Excel (11欄)</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* additional small styles */
+    html,body { height:100%; }
+    .mic-btn {
+      width:88px; height:88px; border-radius:9999px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      transition: transform .12s ease;
+    }
+    .mic-btn:active { transform: scale(.98); }
+    .pulse-ring {
+      position:absolute; inset:0; border-radius:9999px;
+      box-shadow: 0 0 0 0 rgba(255,0,0,0.18);
+      animation: none;
+      pointer-events:none;
+    }
+    .recording .pulse-ring { animation: pulse 1800ms infinite; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.40); }
+      70% { box-shadow: 0 0 0 18px rgba(59,130,246,0.06); }
+      100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.00); }
+    }
+    .large-btn { padding: 0.75rem 1rem; font-weight:600; }
+    .field-label { font-size:0.85rem; color:#374151; }
+    pre.transcript { white-space:pre-wrap; word-break:break-word; max-height:220px; overflow:auto; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-start justify-center p-4">
+  <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-xl font-semibold">澳門維修報工助手</h1>
+        <p class="text-sm text-gray-500">廣東話語音 → 自動填入 11 欄（Excel 友好）</p>
+      </div>
+      <div class="text-right text-xs text-gray-400">手機優先</div>
+    </div>
+
+    <!-- status -->
+    <div id="supportWarning" class="hidden mb-3 p-3 rounded-md bg-yellow-50 text-yellow-800 text-sm"></div>
+
+    <!-- Mic control -->
+    <div class="flex items-center justify-center mb-4">
+      <div id="micWrap" class="relative">
+        <button id="micBtn" class="mic-btn bg-gradient-to-br from-blue-500 to-indigo-600 text-white recording:animate-pulse large-btn">
+          <svg id="micIcon" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M12 1v11m0 0a3 3 0 0 0 3-3V4a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M19 11v2a7 7 0 0 1-14 0v-2"/>
+          </svg>
+        </button>
+        <div class="pulse-ring" aria-hidden="true"></div>
+        <div class="mt-2 text-center text-xs text-gray-500">點按開始 / 停止</div>
+      </div>
+    </div>
+
+    <!-- interim + final transcript -->
+    <div class="mb-3">
+      <div class="field-label mb-1">即時文字預覽 (Interim)</div>
+      <div id="interim" class="p-3 rounded-md bg-gray-100 text-gray-700 min-h-[44px]"></div>
+    </div>
+
+    <div class="mb-3">
+      <div class="field-label mb-1">已確定文字 (Final)</div>
+      <pre id="final" class="transcript p-3 rounded-md bg-gray-50"></pre>
+    </div>
+
+    <!-- parsed fields -->
+    <div class="mb-3">
+      <div class="flex items-center justify-between mb-2">
+        <div class="field-label">自動擷取欄位（可手動編輯）</div>
+        <div class="text-xs text-gray-400">點擊任一欄位可編輯</div>
+      </div>
+
+      <div id="fields" class="grid grid-cols-1 gap-2">
+        <!-- We'll render inputs via JS -->
+      </div>
+    </div>
+
+    <!-- actions -->
+    <div class="flex gap-2 mt-3">
+      <button id="copyBtn" class="flex-1 large-btn bg-green-600 text-white rounded-md">複製（含原始錄音原文與 11 欄）</button>
+      <button id="csvBtn" class="flex-1 large-btn bg-gray-800 text-white rounded-md">下載 CSV</button>
+    </div>
+
+    <div class="mt-3 text-xs text-gray-500">
+      提示：錄音開始時會記錄「接單時間」。若語音中有提到「開始 X點」或「完工 X點」，系統會自動擷取並計算 Response/Resolution Time。可於欄位內手動修正。
+    </div>
+  </div>
+
+<script>
+/* -------------------------
+   Configuration & Helpers
+   ------------------------- */
+const CONTENT_KEYWORDS = [
+  "執油","補水泥","漏水","換燈","巡查","保養","維修","清潔","更換","檢查","報修","fix","repair"
+];
+const PM_KEYWORDS = ["巡查","保養"];
+const FIELD_KEYS = [
+  "日期","工單號碼","工作分類","內容","地點","接單時間","開始時間","完工時間","工單狀態","Response Time","Resolution Time"
+];
+
+function nowISODate(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function pad2(n){ return n.toString().padStart(2,'0'); }
+function formatTime(date){
+  if(!date) return "";
+  return pad2(date.getHours()) + ":" + pad2(date.getMinutes());
+}
+function parseChineseNumber(s){
+  // simple Chinese numerals mapping for common small numbers
+  if(!s) return NaN;
+  if(/^\d+$/.test(s)) return parseInt(s,10);
+  const map = {零:0,一:1,二:2,兩:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10,百:100};
+  // e.g., 十五, 二十三
+  let total = 0;
+  if(s.length===1 && map[s]!=null) return map[s];
+  // handle 十x or x十x
+  if(s.includes('十')){
+    const parts = s.split('十');
+    const left = parts[0] ? (map[parts[0]]||0) : 1;
+    const right = parts[1] ? (map[parts[1]]||0) : 0;
+    return left*10 + right;
+  }
+  // fallback - try digits inside
+  let digits = s.replace(/[^\d]/g,'');
+  if(digits) return parseInt(digits,10);
+  return NaN;
+}
+
+/* Parse Cantonese time phrases: e.g., "9點3"->09:15, "10點半"->10:30, "11點"->11:00
+   Also supports "十點一刻", "九時三十分", "9:15" etc.
+*/
+function parseCantoneseTimeFromText(text, preferDate=new Date()){
+  if(!text) return null;
+  text = text.replace(/\s+/g,'').toLowerCase();
+  // common patterns
+  // 1) 9:15, 09:15
+  let m = text.match(/(\d{1,2})[:：](\d{1,2})/);
+  if(m){
+    const h = parseInt(m[1],10), min = parseInt(m[2],10);
+    const dt = new Date(preferDate); dt.setHours(h, min, 0,0); return dt;
+  }
+  // 2) (\d{1,2})點半
+  m = text.match(/(\d{1,2}|[一二兩三四五六七八九十]+)點半|(\d{1,2}|[一二兩三四五六七八九十]+)時半/);
+  if(m){
+    const g = m[1] || m[2];
+    const h = isNaN(Number(g)) ? parseChineseNumber(g) : Number(g);
+    if(!isNaN(h)){
+      const dt = new Date(preferDate); dt.setHours(h,30,0,0); return dt;
+    }
+  }
+  // 3) (\d{1,2})點3 or 點一刻 or 一刻
+  m = text.match(/(\d{1,2}|[一二兩三四五六七八九十]+)點3|(\d{1,2}|[一二兩三四五六七八九十]+)點一刻|一刻|點一刻/);
+  if(m){
+    // find hour
+    let hm = text.match(/(\d{1,2}|[一二兩三四五六七八九十]+)點/);
+    let h =  preferDate.getHours();
+    if(hm){
+      const g = hm[1];
+      h = isNaN(Number(g)) ? parseChineseNumber(g) : Number(g);
+    }
+    const dt = new Date(preferDate); dt.setHours(h,15,0,0); return dt;
+  }
+  // 4) 三刻 => :45 with hour before
+  m = text.match(/(\d{1,2}|[一二兩三四五六七八九十]+)點三刻|三刻/);
+  if(m){
+    let hm = text.match(/(\d{1,2}|[一二兩三四五六七八九十]+)點/);
+    let h =  preferDate.getHours();
+    if(hm){
+      const g = hm[1];
+      h = isNaN(Number(g)) ? parseChineseNumber(g) : Number(g);
+    }
+    const dt = new Date(preferDate); dt.setHours(h,45,0,0); return dt;
+  }
+  // 5) (\d{1,2})點(\d{1,2})  like 9點15 / 九點十五
+  m = text.match(/(\d{1,2}|[一二兩三四五六七八九十]+)點([0-9一二兩三四五六七八九十百]+)分?/);
+  if(m){
+    const rawH = m[1], rawM = m[2];
+    const h = isNaN(Number(rawH)) ? parseChineseNumber(rawH) : Number(rawH);
+    const min = isNaN(Number(rawM)) ? parseChineseNumber(rawM) : Number(rawM);
+    if(!isNaN(h) && !isNaN(min)){
+      const dt = new Date(preferDate); dt.setHours(h,min,0,0); return dt;
+    }
+  }
+  // 6) fallback: look for Arabic number followed by 點 and optional trailing digit interpreted as quarter if single digit '3'
+  m = text.match(/(\d{1,2})點([0-9])/);
+  if(m){
+    const h = parseInt(m[1],10);
+    const t = parseInt(m[2],10);
+    let min = 0;
+    if(t===3) min = 15; else if(t===5) min = 30; else if(t===7) min = 45; else min = t;
+    const dt = new Date(preferDate); dt.setHours(h,min,0,0); return dt;
+  }
+  return null;
+}
+
+/* Smart location extraction:
+   - after keywords: 喺 / 去 / 到 / 位置係 capture up to punctuation or '，' or '，' or end
+   - capture floor patterns like "18樓", "2505房", "3.5層"
+*/
+function extractLocation(text){
+  if(!text) return "";
+  // floor pattern
+  let m = text.match(/(\d+(\.\d+)?)\s*(樓|層|房|室)/);
+  if(m) return m[0];
+  // after keywords
+  m = text.match(/(?:喺|去|到|位置係)\s*([^\，\,\。\n]{2,40})/);
+  if(m) return m[1].trim();
+  // fallback: look for typical location words
+  m = text.match(/\b(大堂|天台|停車場|廚房|電梯|後台|房間|房)\b/);
+  if(m) return m[0];
+  return "";
+}
+
+/* content detection */
+function extractContent(text){
+  if(!text) return "";
+  for(const kw of CONTENT_KEYWORDS){
+    const re = new RegExp(kw,"i");
+    if(re.test(text)) return kw;
+  }
+  // fallback: first few words (short)
+  return text.slice(0,40);
+}
+
+/* classify */
+function classifyWork(content){
+  for(const k of PM_KEYWORDS){
+    if(content.includes(k)) return "PM";
+  }
+  return "CMBD";
+}
+
+/* extract work order number */
+function extractWorkOrder(text){
+  if(!text) return "";
+  let m = text.match(/(?:工單|單號|WO|wo|wo#|workorder|work order)[^\dA-Za-z\-]*([A-Za-z0-9\-]+)/i);
+  if(m) return m[1];
+  // any number sequence of length >=4 maybe a ticket
+  m = text.match(/\b(\d{4,10})\b/);
+  if(m) return m[1];
+  return "";
+}
+
+/* status */
+function extractStatus(text){
+  if(!text) return "Open";
+  if(/完工|已完成|完成|收工|完成咗|已結束/i.test(text)) return "Completed";
+  if(/取消|已取消|作廢/i.test(text)) return "Cancelled";
+  return "In Progress";
+}
+
+/* compute minutes */
+function minutesBetween(a,b){
+  if(!a || !b) return "";
+  const diff = (b.getTime() - a.getTime())/60000;
+  return Math.max(0, Math.round(diff));
+}
+
+/* -------------------------
+   Speech recognition logic
+   ------------------------- */
+const supportWarning = document.getElementById("supportWarning");
+const micBtn = document.getElementById("micBtn");
+const micWrap = document.getElementById("micWrap");
+const interimEl = document.getElementById("interim");
+const finalEl = document.getElementById("final");
+const copyBtn = document.getElementById("copyBtn");
+const csvBtn = document.getElementById("csvBtn");
+const fieldsContainer = document.getElementById("fields");
+
+let recognition = null;
+let listening = false;
+let finalTranscript = "";
+let interimTranscript = "";
+let acceptInterim = true;
+let acceptFinal = true;
+let orderAcceptedAt = null; // 接單時間 (Date)
+let parsedFields = {}; // store values for fields
+
+function initFields(){
+  // initialize parsedFields with empty values
+  FIELD_KEYS.forEach(k => parsedFields[k] = "");
+  parsedFields["日期"] = nowISODate();
+  renderFields();
+}
+function renderFields(){
+  // render inputs for each field
+  fieldsContainer.innerHTML = "";
+  FIELD_KEYS.forEach((k) => {
+    const val = parsedFields[k] || "";
+    const id = "field_" + k.replace(/\s+/g,'_');
+    const wrapper = document.createElement("div");
+    wrapper.className = "grid grid-cols-1 gap-1";
+    wrapper.innerHTML = `
+      <label class="field-label">${k}</label>
+      <input id="${id}" class="p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-blue-400" value="${val}" />
+    `;
+    fieldsContainer.appendChild(wrapper);
+    const input = wrapper.querySelector("input");
+    input.addEventListener('input', (e) => { parsedFields[k] = e.target.value; });
+  });
+}
+
+initFields();
+
+/* Setup SpeechRecognition if available */
+function setupRecognition(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    supportWarning.classList.remove('hidden');
+    supportWarning.innerHTML = "本瀏覽器不支援 Web Speech API。建議：<strong>Android Chrome</strong> 使用體驗最佳；iOS 如果無法使用，請改用 Chrome 或更新系統 / 瀏覽器。";
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-HK';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    listening = true;
+    micWrap.classList.add('recording');
+    micBtn.classList.add('scale-100');
+    interimEl.textContent = "";
+    interimEl.classList.remove('text-gray-400');
+    // if we just started, record 接單時間
+    if(!orderAcceptedAt) orderAcceptedAt = new Date();
+    parsedFields["接單時間"] = formatTime(orderAcceptedAt);
+    renderFields();
+  };
+
+  recognition.onresult = (evt) => {
+    let interim = "";
+    let final = finalTranscript || "";
+    for (let i = evt.resultIndex; i < evt.results.length; ++i) {
+      const res = evt.results[i];
+      if (res.isFinal) {
+        final += res[0].transcript;
+      } else {
+        interim += res[0].transcript;
+      }
+    }
+    finalTranscript = final;
+    interimTranscript = interim;
+    interimEl.textContent = interimTranscript || "（等待語音）";
+    finalEl.textContent = finalTranscript;
+    // live parse on the fly (best-effort)
+    liveParse(finalTranscript + " " + interimTranscript);
+  };
+
+  recognition.onerror = (e) => {
+    console.error("SpeechRecognition error", e);
+    supportWarning.classList.remove('hidden');
+    supportWarning.innerHTML = "錄音時出錯：" + (e.error || JSON.stringify(e));
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    micWrap.classList.remove('recording');
+    // finalize parsing
+    finalEl.textContent = finalTranscript;
+    interimEl.textContent = "";
+    if(finalTranscript.trim().length>0) finalizeParse(finalTranscript);
+    // leave orderAcceptedAt (接單時間) as is
+  };
+}
+
+/* live parsing while interim/final streaming */
+function liveParse(text){
+  if(!text) return;
+  // extract location, content, times etc.
+  const location = extractLocation(text);
+  const content = extractContent(text);
+  const wo = extractWorkOrder(text);
+  const status = extractStatus(text);
+  // times
+  const startCandidate = (text.match(/開始.*?[：:：\s]?([^\，\,\。\n]+)/) || text.match(/開工.*?[：:：\s]?([^\，\,\。\n]+)/));
+  const completeCandidate = text.match(/(完工|完成|收工).*?[：:：\s]?([^\，\,\。\n]+)/);
+  let startTime = null, completeTime = null;
+  // try parse directly overall text for time phrases
+  startTime = parseCantoneseTimeFromText(text) || startTime;
+  // try more specific matches
+  if(startCandidate && startCandidate[1]){
+    const t = parseCantoneseTimeFromText(startCandidate[1]);
+    if(t) startTime = t;
+  }
+  if(completeCandidate && completeCandidate[2]){
+    const t2 = parseCantoneseTimeFromText(completeCandidate[2]);
+    if(t2) completeTime = t2;
+  } else {
+    // attempt parse "完工於 10點半" pattern
+    const m = text.match(/完工.*?(\d{1,2}[點:：]\d{0,2}|[一二兩三四五六七八九十]+點[一二三四五六七八九十半刻]+|[一二兩三四五六七八九十]+點半)/);
+    if(m) completeTime = parseCantoneseTimeFromText(m[1]);
+  }
+
+  // update parsedFields progressively (only fill if found)
+  if(location) parsedFields["地點"] = location;
+  if(content) parsedFields["內容"] = content;
+  if(wo) parsedFields["工單號碼"] = wo;
+  parsedFields["工作分類"] = classifyWork(parsedFields["內容"] || content || "");
+  // set start/complete strings if parsed
+  if(startTime) parsedFields["開始時間"] = formatTime(startTime);
+  if(completeTime) parsedFields["完工時間"] = formatTime(completeTime);
+  // calculate Response and Resolution time if possible
+  const acceptedAt = orderAcceptedAt;
+  const parsedStart = parsedFields["開始時間"] ? new Date().setHours(...parsedFields["開始時間"].split(':').map(x=>parseInt(x))) : null;
+  // better to parse as Date objects
+  let dtStart = null, dtComplete = null;
+  if(parsedFields["開始時間"]){
+    const [h,m] = parsedFields["開始時間"].split(':').map(x=>parseInt(x));
+    dtStart = new Date(); dtStart.setHours(h,m,0,0);
+  }
+  if(parsedFields["完工時間"]){
+    const [h,m] = parsedFields["完工時間"].split(':').map(x=>parseInt(x));
+    dtComplete = new Date(); dtComplete.setHours(h,m,0,0);
+  }
+  if(acceptedAt && dtStart) parsedFields["Response Time"] = minutesBetween(acceptedAt, dtStart);
+  if(dtStart && dtComplete) parsedFields["Resolution Time"] = minutesBetween(dtStart, dtComplete);
+  parsedFields["工單狀態"] = status;
+  parsedFields["日期"] = nowISODate();
+  renderFields();
+}
+
+/* finalize parse once recognition stops */
+function finalizeParse(text){
+  if(!text) return;
+  // overall extraction
+  const location = extractLocation(text);
+  const content = extractContent(text);
+  const wo = extractWorkOrder(text);
+  const status = extractStatus(text);
+  // find explicit start/finish phrases
+  const startMatch = text.match(/(?:開始|開工|start|開始於)\s*[:：]?\s*([^\，\,\。\n]+)/i);
+  const finishMatch = text.match(/(?:完工|完成|收工|finish|完成於)\s*[:：]?\s*([^\，\,\。\n]+)/i);
+
+  let startTime = null, completeTime = null;
+  if(startMatch && startMatch[1]) startTime = parseCantoneseTimeFromText(startMatch[1]);
+  if(finishMatch && finishMatch[1]) completeTime = parseCantoneseTimeFromText(finishMatch[1]);
+
+  // fallback: if no explicit start/finish in text, try parse first time and last time mentions
+  if(!startTime){
+    startTime = parseCantoneseTimeFromText(text); // best-effort (first found)
+  }
+  // find any second time for completion by scanning for all matches of time-like phrases
+  if(!completeTime){
+    // naive: split by sentences and check last mention
+    const candidates = text.split(/[，,。.；;。!?]/).map(s=>s.trim()).filter(Boolean);
+    for(let i=candidates.length-1;i>=0;i--){
+      const t = parseCantoneseTimeFromText(candidates[i]);
+      if(t){
+        completeTime = t; break;
+      }
+    }
+  }
+
+  // fill parsedFields
+  if(location) parsedFields["地點"] = location;
+  if(content) parsedFields["內容"] = content;
+  if(wo) parsedFields["工單號碼"] = wo;
+  parsedFields["工作分類"] = classifyWork(parsedFields["內容"] || content || "");
+  parsedFields["工單狀態"] = status;
+  parsedFields["日期"] = nowISODate();
+
+  if(!orderAcceptedAt) orderAcceptedAt = new Date();
+  parsedFields["接單時間"] = formatTime(orderAcceptedAt);
+
+  if(startTime) parsedFields["開始時間"] = formatTime(startTime);
+  if(completeTime) parsedFields["完工時間"] = formatTime(completeTime);
+
+  // compute response and resolution times
+  let dtStart = null, dtComplete = null;
+  if(parsedFields["開始時間"]){
+    const [h,m] = parsedFields["開始時間"].split(':').map(x=>parseInt(x));
+    dtStart = new Date(); dtStart.setHours(h,m,0,0);
+  }
+  if(parsedFields["完工時間"]){
+    const [h,m] = parsedFields["完工時間"].split(':').map(x=>parseInt(x));
+    dtComplete = new Date(); dtComplete.setHours(h,m,0,0);
+  }
+  parsedFields["Response Time"] = (orderAcceptedAt && dtStart) ? minutesBetween(orderAcceptedAt, dtStart) : "";
+  parsedFields["Resolution Time"] = (dtStart && dtComplete) ? minutesBetween(dtStart, dtComplete) : "";
+  renderFields();
+}
+
+/* button handlers */
+micBtn.addEventListener('click', async () => {
+  if(!recognition){
+    setupRecognition();
+    if(!recognition){
+      alert("抱歉，本瀏覽器不支援語音辨識。請使用 Android Chrome，或在 iOS 上使用 Chrome。");
+      return;
+    }
+  }
+
+  if(!listening){
+    // request microphone permissions proactively
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch(err){
+      supportWarning.classList.remove('hidden');
+      supportWarning.innerHTML = "請允許麥克風權限以開始錄音。";
+      return;
+    }
+    // start
+    finalTranscript = finalEl.textContent || "";
+    recognition.start();
+    micBtn.setAttribute('aria-pressed','true');
+    micWrap.classList.add('recording');
+  } else {
+    recognition.stop();
+    micBtn.setAttribute('aria-pressed','false');
+    micWrap.classList.remove('recording');
+  }
+});
+
+/* copy / export functions */
+function buildExportText(){
+  // Build a user-friendly block that contains the raw transcript and the 11 fields in order
+  const raw = finalTranscript.trim() || "(無原始文字)";
+  const lines = [];
+  lines.push("原始錄音原文：");
+  lines.push(raw);
+  lines.push("");
+  lines.push("結構化欄位（可直接貼入 Excel）:");
+  // produce TSV header and row
+  const header = FIELD_KEYS.join("\t");
+  const row = FIELD_KEYS.map(k => {
+    const v = parsedFields[k] === undefined ? "" : parsedFields[k];
+    return String(v).replace(/\r?\n/g," ");
+  }).join("\t");
+  lines.push(header);
+  lines.push(row);
+  return lines.join("\n");
+}
+
+copyBtn.addEventListener('click', async () => {
+  const text = buildExportText();
+  try {
+    await navigator.clipboard.writeText(text);
+    copyBtn.textContent = "已複製 ✅";
+    setTimeout(()=> copyBtn.textContent = "複製（含原始錄音原文與 11 欄）", 1800);
+  } catch(e){
+    // fallback
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    copyBtn.textContent = "已複製 ✅";
+    setTimeout(()=> copyBtn.textContent = "複製（含原始錄音原文與 11 欄）", 1800);
+  }
+});
+
+csvBtn.addEventListener('click', () => {
+  // Create CSV (tab separated for Excel friendly)
+  const header = FIELD_KEYS.join(",");
+  const row = FIELD_KEYS.map(k => {
+    const v = parsedFields[k] === undefined ? "" : parsedFields[k];
+    // escape quotes
+    const s = String(v).replace(/"/g,'""');
+    return `"${s}"`;
+  }).join(",");
+  const csv = header + "\n" + row;
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `workorder_${nowISODate()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+
+/* Initial setup */
+setupRecognition();
+renderFields();
+</script>
+</body>
+</html>
