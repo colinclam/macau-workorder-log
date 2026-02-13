@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>維修報工系統 (PC離線版)</title>
+    <title>維修報工系統 (極簡版)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -29,7 +29,6 @@
         
         .main-grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; }
         
-        /* 左側面板 */
         .control-panel { 
             background: white; 
             padding: 25px; 
@@ -133,7 +132,6 @@
         .btn-success:hover { background: #229954; }
         .btn-success:disabled { background: #95a5a6; cursor: not-allowed; }
         
-        /* 語音指南 */
         .voice-guide { 
             margin-top: 20px;
             border-top: 2px solid #ecf0f1;
@@ -158,19 +156,12 @@
             line-height: 1.8;
         }
         .guide-content.show { display: block; }
-        .guide-content code { 
-            background: #e9ecef; 
-            padding: 2px 6px; 
-            border-radius: 4px;
-            font-family: monospace;
-        }
         .guide-content .example { 
             color: #27ae60; 
             font-weight: bold;
             margin: 8px 0;
         }
         
-        /* 右側數據面板 */
         .data-panel { 
             background: white; 
             padding: 25px; 
@@ -264,14 +255,13 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1>🔧 維修報工系統 (PC離線版)</h1>
-                <div class="subtitle">10秒語音輸入 · 一鍵複製18欄 · 零權限申請</div>
+                <h1>🔧 維修報工系統 (極簡版)</h1>
+                <div class="subtitle">只說話，零打字，後台對照員工資料</div>
             </div>
             <div class="live-time" id="liveTime">00:00:00</div>
         </div>
         
         <div class="main-grid">
-            <!-- 左側控制面板 -->
             <div class="control-panel">
                 <div class="warning-box" id="warningBox">
                     ⚠️ 瀏覽器不支持語音識別，請使用手動輸入
@@ -297,19 +287,17 @@
                     <button class="btn-danger" id="resetBtn">清空</button>
                 </div>
                 
-                <!-- 一鍵複製按鈕 -->
                 <button class="btn-success" id="copyBtn" disabled>
                     📋 一鍵複製18欄到Excel
                 </button>
                 
-                <!-- 語音輸入指南 -->
                 <div class="voice-guide">
                     <div class="guide-toggle" id="guideToggle">
                         <span>🎤 語音輸入指南 (點擊展開)</span>
                         <span style="margin-left: auto;">▼</span>
                     </div>
                     <div class="guide-content" id="guideContent">
-                        <p><strong>標準格式（10秒內講完）：</strong></p>
+                        <p><strong>標準格式（15秒內講完）：</strong></p>
                         <p class="example">「[時間]去[地點]做[工作]，[時間]搞掂」</p>
                         
                         <p><strong>實際例子：</strong></p>
@@ -319,24 +307,25 @@
                         <p>8點、8點半、8點15分、08:30 都可以</p>
                         
                         <p><strong>工作關鍵字：</strong></p>
-                        <p>換燈、補水泥、檢查、維修、安裝、執油、跳掣、早會、巡查</p>
+                        <p>換燈、補水泥、檢查、維修、安裝、執油、跳掣、早會、巡查、通渠、換水龍頭、加雪種...</p>
                         
                         <p><strong>小貼士：</strong></p>
-                        <p>• 地點要講完整：「16樓工程部寫字樓」而非單講「16樓」<br>
+                        <p>• 地點講完整：「16樓工程部寫字樓」<br>
                         • 兩個時間會自動配對為開始和完成<br>
-                        • 只講一個時間，系統會自動加30分鐘</p>
+                        • 只講一個時間，完成時間自動加1.5小時<br>
+                        • 員工編號姓名不用說，後台Excel對照</p>
                     </div>
                 </div>
             </div>
             
-            <!-- 右側數據面板 -->
             <div class="data-panel">
                 <div class="panel-header">
                     <h2>📋 Excel 數據預覽 (A-R欄)</h2>
                 </div>
                 
                 <div class="copy-preview" id="copyPreview">
-                    點擊「一鍵複製」後，請到Excel選取目標行的<strong>A欄</strong>，按Ctrl+V貼上
+                    點擊「一鍵複製」後，請到Excel選取目標行的<strong>A欄</strong>，按Ctrl+V貼上<br>
+                    <span style="color: #e74c3c;">員工編號、姓名請在Excel手動補充或後台對照</span>
                 </div>
                 
                 <table id="dataTable">
@@ -347,9 +336,7 @@
                             <th>內容 (可手動修改)</th>
                         </tr>
                     </thead>
-                    <tbody id="tableBody">
-                        <!-- 動態生成 -->
-                    </tbody>
+                    <tbody id="tableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -378,25 +365,83 @@
             { id: 'colR', label: 'R. Resolution Time', default: '' }
         ];
 
-        const CONTENT_KEYWORDS = {
-            '早會': ['早會', '晨會', 'briefing', '朝早開會', '開會', '組會'],
-            '補水泥': ['補水泥', '批盪', '地台維修', '水泥維修', '地台'],
-            '換燈': ['換燈', '更換光管', '燈具維修', '換膽', '換燈管', '光管'],
-            '安裝': ['安裝', '裝設', '掛裝', '裝嵌'],
-            '檢查': ['檢查', '巡查', '測試', '巡視', '檢測'],
-            '執油': ['執油', '油漆', '油油', '補油', '翻油'],
-            '維修': ['維修', '修理', '整', '執', '修復'],
-            '跳掣': ['跳掣', '跳電', '短路', '漏電', '電制'],
-            '安裝貨架': ['貨架', '層架', '置物架', '安裝架']
+        // 聚合關鍵字池（6組合一）
+        const KEYWORD_POOL = {
+            // AC 空調組
+            '洗隔塵網': ['隔塵網', '過濾網', '清洗', '洗網', '濾網', '隔塵'],
+            '加雪種': ['雪種', '冷媒', 'freon', '充注', '加氟', '補雪種', '雪種不足'],
+            '維修主機': ['主機', '壓縮機', 'chiller', '冷凝機', '室外機', '壓縮機'],
+            '檢查風管': ['風管', '風口', '風喉', '送風', '回風', '風扇'],
+            '溫度異常': ['溫度', '不冷', '不夠凍', '太熱', '結冰', '溫控', '恆溫'],
+            '維修風機': ['風機', '風扇', '抽氣', '排氣', '通風'],
+            
+            // AV 視聽組
+            '修投影機': ['投影機', 'projector', '投映機', '投影', '投屏'],
+            '換音響': ['音響', '喇叭', 'speaker', '擴音', '音箱', '音頻'],
+            '調試麥克風': ['麥克風', 'mic', '話筒', '無線咪', '咪', '麥'],
+            '修電視': ['電視', 'TV', '屏幕', '顯示屏', '顯示器', 'mon'],
+            '會議系統': ['會議系統', '視像會議', 'video conference', 'zoom', 'teams'],
+            '修功放': ['功放', '擴音機', 'amplifier', '混音', '調音台'],
+            
+            // BD 綜合維修
+            '換燈': ['換燈', '光管', '燈膽', 'LED', '照明', '燈具', '燈泡', '燈閃'],
+            '補水泥': ['補水泥', '批盪', '地台', '牆身', '泥水', '地台補水泥', '批灰'],
+            '執油': ['執油', '油漆', '油油', '補油', '翻油', '油水', '髹油', '鏟油'],
+            '維修': ['維修', '修理', '整', '執', '修復', '搞掂', '執好', '整好'],
+            '安裝': ['安裝', '裝設', '掛裝', '裝嵌', '裝上', '固定', '裝配'],
+            '換門鎖': ['門鎖', '鎖', '換鎖', '門把', '門掣', '門鉸'],
+            '修傢俬': ['傢俬', '家具', '櫃', '枱', '椅', '維修傢俬'],
+            
+            // Duty 值班工程師
+            '緊急維修': ['緊急', '搶修', '急修', 'urgent', '緊急維修', '即時'],
+            '巡查': ['巡查', '巡視', '檢查', '巡樓', '例行檢查', '巡邏'],
+            '早會': ['早會', '晨會', 'briefing', '開會', '組會', '早禱'],
+            '交班': ['交班', '交接', 'handover', '交更', '交更記錄'],
+            '報告': ['報告', '匯報', '報上', '通知', '通報'],
+            
+            // EL 電工組
+            '拉電線': ['拉線', '佈線', '電線', '電纜', '拉電', '放線', '電線槽'],
+            '換電箱': ['電箱', '配電箱', 'MCCB', 'MCB', '配電櫃', '電櫃', '電制箱'],
+            '接電': ['接電', '接駁', '接線', '駁電', '接駁電源', '接電線'],
+            '換開關': ['開關', '制面', '插座', '電制', '燈制', '電掣', '開關掣'],
+            '跳掣': ['跳掣', '跳電', '短路', '漏電', '跳制', '跳電制', '漏電保護'],
+            '測試絕緣': ['絕緣', 'megger', '測試', '絕緣測試', 'megger test'],
+            '換電錶': ['電錶', '電表', '電度錶', 'meter', '電力錶'],
+            
+            // MC 機械管道組
+            '通渠': ['通渠', '堵塞', '去水', '排水', '渠塞', '淤塞', '通渠水'],
+            '換水龍頭': ['水龍頭', '龍頭', '水掣', '閥門', '水閥', '角閥', '波曲'],
+            '修水泵': ['水泵', '泵', 'pump', '抽水機', '水壓', '增壓泵'],
+            '廚房設備': ['廚房', '爐頭', '蒸櫃', '烤箱', 'kitchen', '炸爐', '炒爐'],
+            '水管漏水': ['水管', '漏水', '爆喉', '滲水', '滴水', '水管破裂'],
+            '換馬桶': ['馬桶', '廁所', '坐廁', '蹲廁', '尿斗', '洗手盆', '去水'],
+            '修煤氣': ['煤氣', '石油氣', '氣掣', '氣閥', 'gas', '燃氣']
         };
 
-        const LOCATION_KEYWORDS = ['工程部', '寫字樓', '會議室', '機房', '洗手間', '儲物室', '大堂', '客房', '後勤', '廚房', '餐廳'];
+        // 部門關鍵字
+        const DEPT_KEYWORDS = {
+            '工程部-空調': ['空調', '冷氣', 'AC', 'chiller'],
+            '工程部-視聽': ['視聽', 'AV', '投影', '音響', '會議系統'],
+            '工程部-電工': ['電工', '強電', '弱電', '配電'],
+            '工程部-機械': ['機械', '管道', '水泵', '通渠'],
+            '工程部-綜合': ['工程部', '維修部'],
+            '餐飲部': ['餐飲', '廚房', '餐廳', 'F&B'],
+            '客房部': ['客房', '房務', '房間'],
+            '賭場部': ['賭場', '娛樂場', 'casino', '博彩'],
+            '保安部': ['保安', '安全', 'security'],
+            '管事部': ['管事', '清潔', 'stewarding'],
+            '人事部': ['人事', 'HR', '人力資源'],
+            '貴賓部': ['貴賓', 'VIP', '禮賓', 'concierge']
+        };
+
+        // 地點截斷用工作關鍵字
+        const LOCATION_CUT_WORDS = ['開早會', '開會', '換燈', '補水泥', '檢查', '維修', '安裝', '執油', '做', '搞', '執', '整', '開始', '完成', '得', '搞掂'];
 
         // ================= 全局變量 =================
         let recognition = null;
         let isRecording = false;
         let recordTimer = null;
-        let timeRemaining = 10;
+        let timeRemaining = 15;
         let canExtend = true;
 
         // ================= 初始化 =================
@@ -415,7 +460,7 @@
                         <input type="text" 
                                id="${col.id}" 
                                value="${defaultValue}" 
-                               placeholder="請輸入${col.label.replace(/^[A-Z]\.\s/, '')}"
+                               placeholder="${index >= 3 && index <= 4 ? '後台對照' : '請輸入' + col.label.replace(/^[A-Z]\.\s/, '')}"
                                onchange="onDataChanged()">
                     </td>
                 `;
@@ -440,16 +485,14 @@
             
             recognition.onstart = () => {
                 isRecording = true;
-                timeRemaining = 10;
+                timeRemaining = 15;
                 canExtend = true;
                 updateRecordUI();
                 startCountdown();
             };
             
             recognition.onend = () => {
-                if (isRecording) {
-                    recognition.start(); // 自動重啟以保持連續
-                }
+                if (isRecording) recognition.start();
             };
             
             recognition.onresult = (event) => {
@@ -474,9 +517,7 @@
             
             recognition.onerror = (event) => {
                 console.error('語音錯誤:', event.error);
-                if (event.error === 'not-allowed') {
-                    alert('請允許瀏覽器使用麥克風');
-                }
+                if (event.error === 'not-allowed') alert('請允許瀏覽器使用麥克風');
                 stopRecording();
             };
         }
@@ -490,7 +531,7 @@
                 timeRemaining--;
                 countdownEl.textContent = `還剩 ${timeRemaining} 秒`;
                 
-                if (timeRemaining <= 3) {
+                if (timeRemaining <= 5) {
                     countdownEl.style.color = '#e74c3c';
                     countdownEl.style.fontSize = '18px';
                 }
@@ -501,7 +542,7 @@
                 
                 if (timeRemaining <= 0) {
                     stopRecording();
-                    alert('⏱️ 10秒時間到！如需再講，請重新開始錄音。');
+                    alert('⏱️ 15秒時間到！如需再講，請重新開始錄音。');
                 }
             }, 1000);
         }
@@ -512,9 +553,7 @@
                 clearInterval(recordTimer);
                 recordTimer = null;
             }
-            if (recognition) {
-                recognition.stop();
-            }
+            if (recognition) recognition.stop();
             updateRecordUI();
             document.getElementById('countdown').textContent = '';
             document.getElementById('extendHint').style.display = 'none';
@@ -531,8 +570,7 @@
                 status.textContent = '🔴 錄音中';
             } else {
                 btn.classList.remove('recording');
-                status.textContent = '撳一下開始錄音 (限10秒)';
-                document.getElementById('countdown').textContent = '';
+                status.textContent = '撳一下開始錄音 (限15秒)';
                 document.getElementById('countdown').style.color = '#e74c3c';
                 document.getElementById('countdown').style.fontSize = '14px';
             }
@@ -544,7 +582,6 @@
                 return;
             }
             
-            // 延長邏輯
             if (isRecording && timeRemaining > 0 && timeRemaining <= 5 && canExtend) {
                 timeRemaining += 10;
                 canExtend = false;
@@ -573,10 +610,6 @@
             const result = extractData(text);
             fillTable(result);
             onDataChanged();
-            
-            // 顯示提取摘要
-            const summary = `✅ 提取完成！\n地點：${result.colK || '未識別'}\n時間：${result.colL || '?'} → ${result.colN || '?'}`;
-            console.log(summary);
         });
 
         function extractData(text) {
@@ -585,15 +618,17 @@
             // 日期
             result.colB = new Date().toISOString().split('T')[0];
             
-            // 工作分類和內容
+            // 工作內容
             const contentResult = extractContent(text);
-            result.colI = contentResult.category;
-            result.colJ = contentResult.content;
+            result.colJ = contentResult;
             
-            // 地點（改進版）
-            result.colK = extractLocationFull(text);
+            // 地點（精確截斷版）
+            result.colK = extractLocationClean(text);
             
-            // 時間（改進版雙時間配對）
+            // 部門（從地點提取）
+            result.colH = extractDeptFromLocation(result.colK);
+            
+            // 時間（新邏輯）
             const times = extractTimesSmart(text);
             result.colL = times.receive;
             result.colM = times.start;
@@ -615,57 +650,59 @@
         }
 
         function extractContent(text) {
-            let category = 'CMBD';
-            let contents = [];
-            
-            if (/巡查|保養|pm|PM/.test(text)) {
-                category = 'PM';
-            }
-            
-            for (const [type, keywords] of Object.entries(CONTENT_KEYWORDS)) {
+            const found = [];
+            for (const [type, keywords] of Object.entries(KEYWORD_POOL)) {
                 for (const keyword of keywords) {
                     if (text.includes(keyword)) {
-                        contents.push(type);
+                        found.push(type);
                         break;
                     }
                 }
             }
-            
-            return {
-                category: category,
-                content: contents.length > 0 ? contents.join('、') : '一般維修'
-            };
+            return found.length > 0 ? found.join('、') : '一般維修';
         }
 
-        // 改進：完整捕獲地點
-        function extractLocationFull(text) {
-            // 模式1：X樓 + 後續所有文字（直到標點或時間詞）
-            const floorPattern = /(\d+[F樓層])([^，。]+?)(?=\d+[點時]|$|[，。做搞])/i;
-            const match1 = text.match(floorPattern);
-            if (match1) {
-                const floor = match1[1];
-                const rest = match1[2].trim();
-                // 清理多餘詞
-                const cleaned = rest.replace(/^(去|在|到)/, '').replace(/(做|搞|開始).*$/, '');
-                if (cleaned) {
-                    return floor + cleaned;
+        function extractLocationClean(text) {
+            // 模式：X樓 + 後續文字，直到遇到工作關鍵字或標點
+            const floorPattern = /(\d+[F樓層])([^，。]+)/i;
+            const match = text.match(floorPattern);
+            
+            if (!match) {
+                // 嘗試B1/B2/GF
+                const basementMatch = text.match(/([BG]\d*[Ff]?\/?[Ff]?)([^，。]+)/i);
+                if (basementMatch) {
+                    return cleanLocationEnd(basementMatch[1] + basementMatch[2]);
                 }
+                return '';
             }
             
-            // 模式2：簡單匹配
-            const simplePattern = /(\d+[F樓層][^，。]*)/i;
-            const match2 = text.match(simplePattern);
-            if (match2) return match2[1];
-            
-            // 模式3：B1/B2/GF等
-            const basementPattern = /([BG]\d*[Ff]?\/?[Ff]?)/i;
-            const match3 = text.match(basementPattern);
-            if (match3) return match3[1];
-            
-            return '';
+            const rawLocation = match[1] + match[2];
+            return cleanLocationEnd(rawLocation);
         }
 
-        // 改進：智能雙時間配對
+        function cleanLocationEnd(location) {
+            // 移除尾部工作關鍵字
+            let cleaned = location.trim();
+            for (const word of LOCATION_CUT_WORDS) {
+                if (cleaned.endsWith(word)) {
+                    cleaned = cleaned.slice(0, -word.length).trim();
+                }
+            }
+            // 移除尾部介詞
+            cleaned = cleaned.replace(/[去在做搞執整]$/, '').trim();
+            return cleaned;
+        }
+
+        function extractDeptFromLocation(location) {
+            if (!location) return '';
+            for (const [dept, keywords] of Object.entries(DEPT_KEYWORDS)) {
+                for (const keyword of keywords) {
+                    if (location.includes(keyword)) return dept;
+                }
+            }
+            return '工程部';
+        }
+
         function extractTimesSmart(text) {
             const result = { receive: '', start: '', end: '' };
             
@@ -692,26 +729,18 @@
                 }
             }
             
-            // 去重並排序
             const uniqueTimes = [...new Set(times)];
             
             if (uniqueTimes.length >= 2) {
-                // 兩個時間：第一個開始，第二個完成
+                // 雙時間：第一個接單，第二個完成
                 result.receive = uniqueTimes[0];
                 result.start = addMinutes(uniqueTimes[0], 5);
                 result.end = uniqueTimes[1];
             } else if (uniqueTimes.length === 1) {
-                // 只有一個時間：設為開始，完成時間+30分鐘
+                // 單時間：默認+1.5小時完成
                 result.receive = uniqueTimes[0];
                 result.start = addMinutes(uniqueTimes[0], 5);
-                result.end = addMinutes(uniqueTimes[0], 35);
-            }
-            
-            // 檢查關鍵字確認
-            const hasEndKeyword = /完成|搞掂|完工|得|OK|結束|收工/.test(text);
-            if (uniqueTimes.length === 1 && !hasEndKeyword) {
-                // 只有一個時間且無完成關鍵字，標記為待確認
-                console.log('⚠️ 只檢測到一個時間，完成時間為自動推算');
+                result.end = addMinutes(uniqueTimes[0], 95); // 1小時35分鐘（含5分鐘緩衝）
             }
             
             return result;
@@ -747,23 +776,20 @@
             });
         }
 
-        // ================= 一鍵複製功能 =================
+        // ================= 一鍵複製 =================
         document.getElementById('copyBtn').addEventListener('click', () => {
             const values = COLUMNS.map(col => {
                 const input = document.getElementById(col.id);
                 let val = input ? input.value : '';
-                // 處理Tab和換行符，防止破壞格式
                 val = val.replace(/\t/g, ' ').replace(/\n/g, ' ');
                 return val;
             });
             
             const textToCopy = values.join('\t');
             
-            // 複製到剪貼簿
             navigator.clipboard.writeText(textToCopy).then(() => {
                 showToast();
-            }).catch(err => {
-                // 降級方案
+            }).catch(() => {
                 const textarea = document.createElement('textarea');
                 textarea.value = textToCopy;
                 document.body.appendChild(textarea);
@@ -777,13 +803,10 @@
         function showToast() {
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
+            setTimeout(() => toast.style.display = 'none', 3000);
         }
 
         function onDataChanged() {
-            // 檢查是否有數據，啟用/禁用複製按鈕
             const hasData = COLUMNS.some(col => {
                 const input = document.getElementById(col.id);
                 return input && input.value.trim() !== '';
@@ -800,7 +823,6 @@
             }
         });
 
-        // 指南折疊
         document.getElementById('guideToggle').addEventListener('click', () => {
             const content = document.getElementById('guideContent');
             const arrow = document.querySelector('#guideToggle span:last-child');
@@ -808,7 +830,6 @@
             arrow.textContent = content.classList.contains('show') ? '▲' : '▼';
         });
 
-        // 實時時鐘
         setInterval(() => {
             document.getElementById('liveTime').textContent = 
                 new Date().toLocaleTimeString('en-GB');
@@ -818,8 +839,6 @@
         window.addEventListener('DOMContentLoaded', () => {
             initTable();
             initSpeechRecognition();
-            
-            // 監聽輸入變化
             document.getElementById('dataTable').addEventListener('input', onDataChanged);
         });
     </script>
