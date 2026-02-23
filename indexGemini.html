@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>澳門維修報工助手 - 互動編輯器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .recording-active { animation: pulse 1.5s infinite; background-color: #ef4444 !important; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        table input { width: 100%; border: none; background: transparent; padding: 6px; font-size: 13px; font-weight: 600; }
+        table input:focus { background: #f0f9ff; outline: none; border-radius: 4px; box-shadow: inset 0 0 0 1px #bae6fd; }
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 p-2 md:p-6">
+    <div class="max-w-full mx-auto space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[180px]">
+                <button id="micBtn" class="w-20 h-20 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center mb-3">
+                    <span id="micIcon" class="text-3xl">🎤</span>
+                </button>
+                <p class="font-bold text-slate-700 text-sm text-center">撳一下開始錄音<br><span class="text-[10px] font-normal text-slate-400 text-center">講完後請再撳一下結束</span></p>
+            </div>
+            <div class="lg:col-span-3 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-[11px] font-black text-blue-600 uppercase tracking-widest italic">🔊 師傅錄音即時原文</label>
+                    <span id="statusTag" class="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-400 font-bold">STANDBY</span>
+                </div>
+                <div id="rawDisplay" class="text-slate-800 text-lg leading-relaxed flex-grow p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 overflow-y-auto max-h-[100px]">
+                    等待錄音... (範例：「堯，7620，八點九收單喺 16 樓早會。」)
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <h2 class="font-black text-xl text-slate-900">📋 Excel 數據編輯預覽 (18 欄)</h2>
+                <div class="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-200">
+                    <span class="text-xs font-bold text-slate-500 uppercase">今日累計時數：</span>
+                    <span id="totalHours" class="text-3xl font-black text-rose-600 tracking-tighter">0.0</span>
+                    <span class="text-xs font-bold text-slate-500"> / 7.0 HR</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse min-w-[1600px]">
+                    <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase font-black tracking-wider">
+                        <tr>
+                            <th class="p-4 border-b">#</th><th class="p-4 border-b">日期</th><th class="p-4 border-b">組別</th>
+                            <th class="p-4 border-b">員工編號</th><th class="p-4 border-b text-blue-600 bg-blue-50/30">姓名</th>
+                            <th class="p-4 border-b">更</th><th class="p-4 border-b">工單號碼</th><th class="p-4 border-b">部門</th>
+                            <th class="p-4 border-b">工作分類</th><th class="p-4 border-b text-blue-600 bg-blue-50/30">內容</th>
+                            <th class="p-4 border-b text-blue-600 bg-blue-50/30">地點</th><th class="p-4 border-b bg-amber-50 text-amber-700">接單時間(Anchor)</th>
+                            <th class="p-4 border-b">開始時間</th><th class="p-4 border-b">完成時間</th><th class="p-4 border-b">狀態</th>
+                            <th class="p-4 border-b">OT</th><th class="p-4 border-b">Response</th><th class="p-4 border-b">Resolution</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 pb-12">
+            <button onclick="copyToExcel()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-3xl font-black shadow-lg active:scale-95 text-xl flex items-center justify-center gap-3">
+                <span>📋</span> 複製到 Excel (Tab 格式)
+            </button>
+            <button onclick="addNewRow()" class="bg-white text-slate-700 px-10 py-5 rounded-3xl font-black border border-slate-200 shadow-sm active:scale-95">➕ 加新單</button>
+        </div>
+    </div>
+
+    <script>
+        const cols = ["id", "date", "group", "empId", "name", "shift", "woNo", "dept", "type", "content", "location", "orderTime", "startTime", "endTime", "status", "ot", "responseTime", "resTime"];
+        let rowData = [{ id: 1, date: new Date().toISOString().split('T')[0], group: "BD", empId: "", name: "", shift: "08:45:00", woNo: "", dept: "工程", type: "CMBD", content: "", location: "", orderTime: "", startTime: "", endTime: "", status: "完成", ot: "No", responseTime: "00:05:00", resTime: "" }];
+
+        function renderTable() {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = rowData.map((row, idx) => `
+                <tr class="hover:bg-slate-50/80">
+                    <td class="p-2 border-r text-center font-bold text-slate-300">${row.id}</td>
+                    ${cols.slice(1).map(c => `<td class="p-1 border-r ${c==='orderTime'?'bg-amber-50/30':''}"><input type="text" value="${row[c] || ''}" onchange="updateData(${idx}, '${c}', this.value)"></td>`).join('')}
+                </tr>`).join('');
+            calcTotal();
+        }
+
+        function updateData(idx, c, v) {
+            rowData[idx][c] = v;
+            if (c === 'orderTime' && v.includes(':')) {
+                let [h, m] = v.split(':').map(Number);
+                let sM = m + 5;
+                let sH = h + Math.floor(sM/60);
+                rowData[idx]['startTime'] = `${String(sH).padStart(2,'0')}:${String(sM%60).padStart(2,'0')}:00`;
+                rowData[idx]['responseTime'] = "00:05:00";
+                if(!rowData[idx]['endTime']) rowData[idx]['endTime'] = `${String(sH+1).padStart(2,'0')}:${String(sM%60).padStart(2,'0')}:00`;
+                renderTable();
+            }
+            calcTotal();
+        }
+
+        function calcTotal() {
+            let total = 0;
+            rowData.forEach(r => {
+                if (r.startTime && r.endTime) {
+                    let s = new Date(`2000/01/01 ${r.startTime}`).getTime();
+                    let e = new Date(`2000/01/01 ${r.endTime}`).getTime();
+                    if (e > s) {
+                        let d = (e - s) / 1000 / 60;
+                        total += d / 60;
+                        r.resTime = Math.floor(d/60).toString().padStart(2,'0') + ":" + (d%60).toString().padStart(2,'0') + ":00";
+                    }
+                }
+            });
+            const d = document.getElementById('totalHours');
+            d.innerText = total.toFixed(1);
+            d.className = total >= 7 ? "text-3xl font-black text-emerald-600" : "text-3xl font-black text-rose-600";
+        }
+
+        function addNewRow() {
+            const last = rowData[rowData.length - 1];
+            rowData.push({ ...last, id: rowData.length + 1, content: "", location: "", orderTime: "", startTime: "", endTime: "", resTime: "" });
+            renderTable();
+        }
+
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (Speech) {
+            const rec = new Speech();
+            rec.lang = 'zh-HK'; rec.continuous = true; rec.interimResults = true;
+            let isRec = false;
+            document.getElementById('micBtn').onclick = () => { if (isRec) rec.stop(); else rec.start(); };
+            rec.onstart = () => { isRec = true; document.getElementById('micBtn').classList.add('recording-active'); document.getElementById('statusTag').innerText="REC"; };
+            rec.onresult = (e) => {
+                let t = Array.from(e.results).map(r => r[0].transcript).join('');
+                document.getElementById('rawDisplay').innerText = t;
+                let r = rowData[rowData.length - 1];
+                if (t.match(/餐飲|FB|F&B/i)) r.dept = "F&B"; else r.dept = "工程";
+                const jobs = ["執油", "補水泥", "漏水", "換燈", "早會"];
+                jobs.forEach(j => { if (t.includes(j)) r.content = j; });
+                const loc = t.match(/(\d+)\s*(樓|f|字樓|房)/i); if (loc) r.location = loc[0];
+                const tm = t.match(/(\d{1,2})[:點](\d{1,2}|半|[一二三四五六七八九十]|[\d])/);
+                if (tm) {
+                    let hh = tm[1].padStart(2,'0'), mm = tm[2] === "半" ? "30" : (isNaN(tm[2]) ? "00" : tm[2].padStart(2,'0'));
+                    updateData(rowData.length - 1, 'orderTime', `${hh}:${mm}:00`);
+                }
+                renderTable();
+            };
+            rec.onend = () => { isRec = false; document.getElementById('micBtn').classList.remove('recording-active'); document.getElementById('statusTag').innerText="STANDBY"; };
+        }
+
+        function copyToExcel() {
+            let tsv = rowData.map(r => cols.map(c => r[c] || "").join("\t")).join("\n");
+            navigator.clipboard.writeText(tsv).then(() => alert("✅ 已複製！去 Excel 撳 Ctrl+V 貼上。"));
+        }
+        renderTable();
+    </script>
+</body>
+</html>
