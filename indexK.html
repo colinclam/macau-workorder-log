@@ -3,625 +3,499 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>報工助手 v2.0 - 廣東話智能版</title>
+    <title>工單記錄助手 v3.0</title>
     <style>
         /* ==========================================
            Design System - CSS Variables
            ========================================== */
         :root {
-            /* Colors */
             --color-primary: #2563eb;
             --color-primary-dark: #1d4ed8;
             --color-danger: #dc2626;
             --color-success: #059669;
             --color-warning: #d97706;
-            --color-bg: #f1f5f9;
+            --color-bg: #f8fafc;
             --color-card: #ffffff;
-            --color-border: #e2e8f0;
+            --color-border: #cbd5e1;
             --color-text: #1e293b;
             --color-text-muted: #64748b;
             --color-text-light: #94a3b8;
+            --color-highlight: #fef3c7;
             
-            /* Spacing Scale */
             --space-1: 4px;
-            --space-2: 8px;
-            --space-3: 12px;
-            --space-4: 16px;
-            --space-5: 20px;
-            --space-6: 24px;
-            --space-8: 32px;
+            --space-2: 6px;
+            --space-3: 8px;
+            --space-4: 12px;
+            --space-5: 16px;
             
-            /* Typography */
-            --text-xs: 12px;
-            --text-sm: 14px;
-            --text-base: 16px;
-            --text-lg: 18px;
-            --text-xl: 20px;
-            --text-2xl: 24px;
-            --text-3xl: 30px;
+            --text-xs: 11px;
+            --text-sm: 12px;
+            --text-base: 13px;
+            --text-lg: 14px;
             
-            /* Border Radius */
-            --radius-sm: 4px;
-            --radius-md: 8px;
-            --radius-lg: 12px;
-            --radius-xl: 16px;
-            --radius-full: 9999px;
-            
-            /* Shadows */
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --radius-sm: 3px;
+            --radius-md: 4px;
         }
 
-        /* ==========================================
-           Reset & Base
-           ========================================== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body { 
-            font-family: "Microsoft JhengHei", "Heiti TC", "Segoe UI", sans-serif; 
+            font-family: "Microsoft JhengHei", "SimHei", "Heiti TC", sans-serif; 
             background-color: var(--color-bg); 
             font-size: var(--text-base);
-            line-height: 1.6;
+            line-height: 1.4;
             color: var(--color-text);
+            padding: var(--space-3);
         }
 
-        /* ==========================================
-           Layout System
-           ========================================== */
-        .container { 
-            max-width: 1600px; 
-            margin: 0 auto; 
-            padding: var(--space-4); 
-        }
-        
-        .grid { display: flex; flex-wrap: wrap; margin: 0 calc(-1 * var(--space-2)); }
-        .col { padding: 0 var(--space-2); }
-        .col-3 { width: 25%; }
-        .col-9 { width: 75%; }
-        
-        /* 響應式：小螢幕時堆疊 */
-        @media (max-width: 1024px) {
-            .col-3, .col-9 { width: 100%; }
+        .container { max-width: 100%; margin: 0 auto; }
+
+        /* 緊湊頂部區域 */
+        .header-section {
+            background: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+            margin-bottom: var(--space-3);
         }
 
-        /* ==========================================
-           Components - Card
-           ========================================== */
-        .card { 
-            background: var(--color-card); 
-            border-radius: var(--radius-xl); 
-            border: 1px solid var(--color-border); 
-            box-shadow: var(--shadow-md);
-            margin-bottom: var(--space-4);
-            overflow: hidden;
+        .header-top {
+            display: flex;
+            gap: var(--space-3);
+            align-items: flex-start;
+            margin-bottom: var(--space-3);
         }
-        
-        .card-header { 
-            padding: var(--space-4); 
-            background: #f8fafc; 
-            border-bottom: 1px solid var(--color-border);
-            font-weight: bold;
-            color: var(--color-text);
+
+        .mic-area {
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .btn-mic {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: var(--color-primary);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-mic:hover { background: var(--color-primary-dark); }
+        .btn-mic.recording { 
+            background: var(--color-danger); 
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        }
+
+        .mic-status {
+            font-size: var(--text-xs);
+            color: var(--color-text-muted);
+            margin-top: var(--space-2);
+        }
+
+        .input-area { flex: 1; }
+
+        .input-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .card-body { padding: var(--space-4); }
-        .card-accent { border-top: 4px solid var(--color-primary); }
-
-        /* ==========================================
-           Components - Button
-           ========================================== */
-        .btn { 
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--space-2) var(--space-4); 
-            border-radius: var(--radius-md); 
-            border: none; 
-            cursor: pointer; 
-            font-size: var(--text-base);
-            font-weight: bold;
-            transition: all 0.2s;
-            text-align: center;
-            gap: var(--space-2);
-        }
-        
-        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
-        .btn:active { transform: translateY(0); }
-        
-        .btn-primary { background: var(--color-primary); color: white; }
-        .btn-primary:hover { background: var(--color-primary-dark); }
-        
-        .btn-danger { background: var(--color-danger); color: white; }
-        .btn-success { background: var(--color-success); color: white; }
-        .btn-warning { background: var(--color-warning); color: white; }
-        
-        .btn-lg { padding: var(--space-4) var(--space-6); font-size: var(--text-xl); }
-        .btn-sm { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); }
-        .btn-block { display: flex; width: 100%; }
-        
-        .btn-mic { 
-            width: 80px; 
-            height: 80px; 
-            border-radius: var(--radius-full); 
-            font-size: var(--text-3xl);
-            padding: 0;
-        }
-
-        /* ==========================================
-           Components - Form
-           ========================================== */
-        .form-group { margin-bottom: var(--space-4); }
-        
-        .form-label { 
-            display: block; 
-            font-weight: bold; 
-            color: var(--color-primary);
             margin-bottom: var(--space-2);
+        }
+
+        .input-label {
+            font-weight: bold;
+            color: var(--color-primary);
             font-size: var(--text-sm);
         }
-        
-        .form-control { 
-            width: 100%; 
-            padding: var(--space-2) var(--space-3); 
-            border: 2px solid #cbd5e1; 
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            padding: var(--space-2) var(--space-3);
             border-radius: var(--radius-md);
-            font-size: var(--text-base);
-            font-family: inherit;
-            transition: border-color 0.2s;
+            cursor: pointer;
+            font-size: var(--text-sm);
+            font-weight: bold;
         }
-        
-        .form-control:focus { 
-            border-color: var(--color-primary); 
-            outline: none; 
-            background: #fff;
-        }
-        
-        .input-display { 
-            min-height: 100px; 
-            background: #f8fafc; 
-            border: 2px dashed #cbd5e1;
+
+        .btn-primary:hover { background: var(--color-primary-dark); }
+
+        .input-box {
+            min-height: 50px;
+            background: #f1f5f9;
+            border: 2px dashed var(--color-border);
             padding: var(--space-3);
             border-radius: var(--radius-md);
             font-size: var(--text-lg);
             line-height: 1.5;
         }
-        
-        .input-hint { 
-            font-size: var(--text-xs); 
-            color: var(--color-text-light); 
+
+        .input-hint {
+            font-size: var(--text-xs);
+            color: var(--color-text-light);
             margin-top: var(--space-2);
         }
 
-        /* ==========================================
-           Components - Table
-           ========================================== */
-        .table-container { overflow-x: auto; }
-        
-        .data-table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        /* 解析反饋區 */
+        .parse-feedback {
+            background: #eff6ff;
+            border-left: 3px solid var(--color-primary);
+            padding: var(--space-3);
+            margin-top: var(--space-3);
             font-size: var(--text-sm);
         }
-        
-        .data-table th { 
-            padding: var(--space-3); 
-            text-align: left; 
-            background: #f1f5f9;
+
+        .parse-feedback.hidden { display: none; }
+
+        .parse-title {
             font-weight: bold;
-            color: var(--color-text-muted);
-            font-size: var(--text-xs);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            white-space: nowrap;
-        }
-        
-        .data-table td { 
-            padding: var(--space-2); 
-            border-bottom: 1px solid var(--color-border);
-            vertical-align: top;
-        }
-        
-        .data-table tr:hover { background: #f8fafc; }
-        
-        .table-input { 
-            width: 100%; 
-            border: 1px solid #cbd5e1; 
-            padding: var(--space-1) var(--space-2);
-            border-radius: var(--radius-sm);
-            font-size: var(--text-sm);
-            font-family: inherit;
-        }
-        
-        .table-input:focus { 
-            border-color: var(--color-primary); 
-            outline: none;
-        }
-        
-        .table-input-highlight { background: #fffbeb; }
-        
-        .cell-hours { 
-            font-weight: bold; 
-            color: var(--color-primary);
-            text-align: center;
+            margin-bottom: var(--space-2);
         }
 
-        /* ==========================================
-           Components - Alert & Feedback
-           ========================================== */
-        .alert { 
-            padding: var(--space-3) var(--space-4); 
-            border-radius: var(--radius-md); 
-            margin-bottom: var(--space-4);
-            display: none;
-            border-left: 4px solid;
-        }
-        
-        .alert-success { 
-            background: #d1fae5; 
-            color: #065f46; 
-            border-color: var(--color-success);
-        }
-        
-        .alert-error { 
-            background: #fee2e2; 
-            color: #991b1b; 
-            border-color: var(--color-danger);
-        }
-        
-        .alert-warning { 
-            background: #fef3c7; 
-            color: #92400e; 
-            border-color: var(--color-warning);
+        .parse-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-2);
         }
 
-        .parse-feedback { 
-            background: #eff6ff; 
-            border-left: 4px solid var(--color-primary); 
-            padding: var(--space-3); 
-            margin: var(--space-3) 0;
-            border-radius: 0 var(--radius-md) var(--radius-md) 0;
-        }
-        
-        .parse-item { 
-            display: flex; 
+        .parse-item {
+            display: flex;
             justify-content: space-between;
             padding: var(--space-1) 0;
-            border-bottom: 1px dashed #dbeafe;
+            border-bottom: 1px dotted #dbeafe;
         }
-        
-        .parse-item:last-child { border-bottom: none; }
+
         .parse-label { color: var(--color-primary); font-weight: bold; }
         .parse-value { color: var(--color-text); }
 
-        .multi-location-warning {
-            background: #fff7ed;
-            border: 2px solid #f97316;
-            border-radius: var(--radius-md);
-            padding: var(--space-3);
-            margin: var(--space-3) 0;
-            display: none;
-        }
-
-        /* ==========================================
-           Components - Badge & Tag
-           ========================================== */
-        .badge { 
-            display: inline-block; 
-            padding: var(--space-1) var(--space-2); 
-            border-radius: var(--radius-sm); 
-            font-size: var(--text-xs); 
-            font-weight: bold;
-            margin-right: var(--space-2);
-            margin-bottom: var(--space-2);
-        }
-        
-        .badge-blue { background: #dbeafe; color: #1e40af; }
-        .badge-amber { background: #fef3c7; color: #92400e; }
-        .badge-green { background: #d1fae5; color: #065f46; }
-
-        /* ==========================================
-           Components - Stats
-           ========================================== */
-        .stats-box { 
-            text-align: right; 
-            padding: var(--space-4); 
-            background: #fff1f2; 
-            border-top: 2px solid #fda4af;
-        }
-        
-        .stats-number { 
-            font-size: var(--text-3xl); 
-            color: #e11d48; 
-            font-weight: bold;
-        }
-        
-        .stats-label { 
-            font-size: var(--text-sm); 
-            color: var(--color-text-muted);
-        }
-
-        /* ==========================================
-           Utilities
-           ========================================== */
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-muted { color: var(--color-text-muted); }
-        .text-sm { font-size: var(--text-sm); }
-        .text-xs { font-size: var(--text-xs); }
-        .font-bold { font-weight: bold; }
-        
-        .mb-1 { margin-bottom: var(--space-1); }
-        .mb-2 { margin-bottom: var(--space-2); }
-        .mb-3 { margin-bottom: var(--space-3); }
-        .mb-4 { margin-bottom: var(--space-4); }
-        
-        .mr-2 { margin-right: var(--space-2); }
-        
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-2 { gap: var(--space-2); }
-        .gap-3 { gap: var(--space-3); }
-        .gap-4 { gap: var(--space-4); }
-        
-        .hidden { display: none; }
-        
-        /* 錄音動畫 */
-        .recording { 
-            animation: pulse 1.5s infinite; 
-            background: var(--color-danger) !important; 
-        }
-        
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-        }
-
-        /* 指南區域特殊樣式 */
-        .guide-step { margin-bottom: var(--space-4); }
-        .guide-step-title { 
-            font-weight: bold; 
-            color: var(--color-primary);
-            margin-bottom: var(--space-1);
-        }
-        .guide-step-desc { color: var(--color-text-muted); font-size: var(--text-sm); }
-        
-        .location-tags { margin-top: var(--space-3); }
-        
-        .security-info {
-            background: #f8fafc;
-            padding: var(--space-3);
-            border-radius: var(--radius-md);
-            margin-top: var(--space-4);
+        .original-text {
+            margin-top: var(--space-3);
+            padding: var(--space-2);
+            background: white;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
             font-size: var(--text-xs);
             color: var(--color-text-muted);
         }
 
-        /* 分隔線 */
-        .divider {
+        .original-text-label {
+            font-weight: bold;
+            color: var(--color-text);
+            margin-bottom: var(--space-1);
+        }
+
+        /* 表格區域 - 緊湊設計 */
+        .table-section {
+            background: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-3);
+            background: #f1f5f9;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .table-title {
+            font-weight: bold;
+            font-size: var(--text-sm);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .btn-sm {
+            padding: var(--space-1) var(--space-2);
+            font-size: var(--text-xs);
+            border-radius: var(--radius-sm);
             border: none;
+            cursor: pointer;
+        }
+
+        .btn-add { background: var(--color-primary); color: white; }
+        .btn-copy { background: var(--color-success); color: white; }
+
+        /* 表格本體 */
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--text-xs);
+            table-layout: fixed;
+        }
+
+        .data-table th {
+            position: sticky;
+            top: 0;
+            background: #e2e8f0;
+            padding: var(--space-2);
+            text-align: left;
+            font-weight: bold;
+            color: var(--color-text-muted);
+            border-bottom: 1px solid var(--color-border);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: var(--space-1) var(--space-2);
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .data-table tr:hover { background: #f8fafc; }
+
+        /* 欄位寬度優化 */
+        .col-seq { width: 30px; }
+        .col-date { width: 80px; }
+        .col-group { width: 40px; }
+        .col-empid { width: 60px; }
+        .col-name { width: 50px; }
+        .col-shift { width: 70px; }
+        .col-wono { width: 80px; }
+        .col-dept { width: 60px; }
+        .col-type { width: 50px; }
+        .col-content { width: 120px; }
+        .col-location { width: 100px; }
+        .col-time { width: 70px; }
+        .col-status { width: 50px; }
+        .col-ot { width: 40px; }
+        .col-resp { width: 70px; }
+        .col-res { width: 70px; }
+        .col-action { width: 40px; }
+
+        .table-input {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            padding: 2px 4px;
+            font-size: var(--text-xs);
+            font-family: inherit;
+            border-radius: var(--radius-sm);
+        }
+
+        .table-input:focus {
+            border-color: var(--color-primary);
+            outline: none;
+            background: var(--color-highlight);
+        }
+
+        .cell-highlight {
+            background: var(--color-highlight);
+        }
+
+        .cell-hours {
+            text-align: center;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: var(--color-danger);
+            cursor: pointer;
+            font-size: var(--text-sm);
+        }
+
+        /* 底部統計 */
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-3);
+            background: #f1f5f9;
             border-top: 1px solid var(--color-border);
-            margin: var(--space-4) 0;
+        }
+
+        .total-display {
+            text-align: right;
+        }
+
+        .total-number {
+            font-size: var(--text-lg);
+            color: var(--color-danger);
+            font-weight: bold;
+        }
+
+        .total-label {
+            font-size: var(--text-xs);
+            color: var(--color-text-muted);
+        }
+
+        /* 提示訊息 */
+        .alert {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            font-size: var(--text-sm);
+            display: none;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+        /* 響應式調整 */
+        @media (max-width: 1200px) {
+            .parse-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 提示訊息區域 -->
-        <div id="alertBox" class="alert" role="alert"></div>
-        
-        <div class="grid">
-            <!-- 左側：使用指南 -->
-            <div class="col col-3">
-                <div class="card card-accent">
-                    <div class="card-header">
-                        <span>📖 使用指南 (v2.0)</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="guide-step">
-                            <div class="guide-step-title">Step 1: 錄音</div>
-                            <div class="guide-step-desc">撳🎤掣開始講嘢。例如：「十點三去風味居整冷氣做左兩個鐘」</div>
-                        </div>
-                        <div class="guide-step">
-                            <div class="guide-step-title">Step 2: 修正</div>
-                            <div class="guide-step-desc">喺右邊框內檢查文字，有錯字直接手打改返佢。</div>
-                        </div>
-                        <div class="guide-step">
-                            <div class="guide-step-title">Step 3: 執行分析</div>
-                            <div class="guide-step-desc">撳 <span class="badge badge-blue">分析並填表</span>，AI 會自動填入下方表格。</div>
-                        </div>
-                        
-                        <div class="divider"></div>
-                        
-                        <div class="security-info">
-                            <div class="font-bold mb-2">🔒 安全特性：</div>
-                            <ul style="padding-left: 16px; margin: 0;">
-                                <li>❌ 無本地儲存 - 關閉即清除</li>
-                                <li>❌ 無網路請求 - 純本地運作</li>
-                                <li>✅ 相容舊版瀏覽器</li>
-                                <li>✅ 廣東話時間智能解析</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="divider"></div>
-                        
-                        <div>
-                            <div class="font-bold mb-2">星際熱門地點：</div>
-                            <div class="location-tags">
-                                <span class="badge badge-blue">Passion (G/F)</span>
-                                <span class="badge badge-blue">翠華 (1/F)</span>
-                                <span class="badge badge-blue">協成 (10/F)</span>
-                                <span class="badge badge-blue">泳池 (17/F)</span>
-                                <span class="badge badge-blue">風味居 (5/F)</span>
-                                <span class="badge badge-blue">寫字樓 (16/F)</span>
-                            </div>
-                        </div>
-                        
-                        <div class="divider"></div>
-                        
-                        <div class="text-xs text-muted">
-                            <div class="font-bold mb-1">時間格式支援：</div>
-                            <div>• 十點三 = 10:15</div>
-                            <div>• 十點半 = 10:30</div>
-                            <div>• 十點九 = 10:45</div>
-                            <div>• 1030, 10:30, 10點30分</div>
-                        </div>
-                    </div>
+        <!-- 提示訊息 -->
+        <div id="alertBox" class="alert"></div>
+
+        <!-- 頂部輸入區 -->
+        <div class="header-section">
+            <div class="header-top">
+                <div class="mic-area">
+                    <button id="micBtn" class="btn-mic" title="開始/停止錄音">🎤</button>
+                    <div id="micStatus" class="mic-status">撳一下錄音</div>
                 </div>
-                
-                <div class="text-center text-muted text-sm" style="padding: var(--space-4);">
-                    <em>Secure Cantonese AI v2.0</em>
+                <div class="input-area">
+                    <div class="input-header">
+                        <span class="input-label">🎙️ 語音輸入 / 手動輸入：</span>
+                        <button onclick="parseAndFill()" class="btn-primary">🚀 分析並填表</button>
+                    </div>
+                    <div id="inputDisplay" class="input-box" contenteditable="true">
+                        請說話或輸入內容...
+                    </div>
+                    <div class="input-hint">
+                        範例：「今朝八點三去16樓寫字樓開早會」或「十點半風味居整冷氣兩個鐘」
+                    </div>
                 </div>
             </div>
 
-            <!-- 右側：主要功能區 -->
-            <div class="col col-9">
-                <!-- 輸入區域 -->
-                <div class="card">
-                    <div class="card-body">
-                        <div class="flex gap-4" style="align-items: flex-start;">
-                            <!-- 錄音按鈕 -->
-                            <div class="text-center">
-                                <button id="micBtn" class="btn btn-primary btn-mic" title="開始/停止錄音">
-                                    <span id="micIcon">🎤</span>
-                                </button>
-                                <div id="micStatus" class="text-sm text-muted" style="margin-top: var(--space-2);">撳一下錄音</div>
-                                <div id="browserSupport" class="text-xs text-muted" style="margin-top: var(--space-1);"></div>
-                            </div>
-                            
-                            <!-- 文字輸入區 -->
-                            <div style="flex: 1;">
-                                <div class="flex justify-between mb-2">
-                                    <label class="form-label">🔊 語音原文 / 手動輸入區：</label>
-                                    <button onclick="parseAndFill()" class="btn btn-primary">
-                                        <span>🚀</span>
-                                        <span>分析並填表</span>
-                                    </button>
-                                </div>
-                                <div id="inputDisplay" class="input-display" contenteditable="true">
-                                    請說話或輸入內容...
-                                </div>
-                                <div class="input-hint">
-                                    支援廣東話口語：「十點三去風味居整冷氣做左兩個鐘」或「14:30 泳池檢查水質 1.5小時」
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 多地點警告 -->
-                        <div id="multiLocationWarning" class="multi-location-warning">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span>⚠️</span>
-                                <span class="font-bold">偵測到多個地點</span>
-                            </div>
-                            <div id="detectedLocations" class="mb-2"></div>
-                            <div class="text-sm">系統已使用第一個地點。如需分開記錄，請手動新增行。</div>
-                        </div>
-                        
-                        <!-- 解析結果反饋 -->
-                        <div id="parseFeedback" class="parse-feedback hidden">
-                            <div class="font-bold mb-2">📝 解析結果：</div>
-                            <div id="parseDetails"></div>
-                        </div>
-                    </div>
+            <!-- 解析反饋 -->
+            <div id="parseFeedback" class="parse-feedback hidden">
+                <div class="parse-title">📝 AI 解析結果：</div>
+                <div id="parseDetails" class="parse-grid"></div>
+                <div class="original-text">
+                    <div class="original-text-label">📄 原文備份（供參考）：</div>
+                    <div id="originalText"></div>
                 </div>
+            </div>
+        </div>
 
-                <!-- 表格區域 -->
-                <div class="card">
-                    <div class="card-header">
-                        <span>工單記錄表</span>
-                        <button onclick="addNewRow()" class="btn btn-primary btn-sm">
-                            <span>➕</span>
-                            <span>新增空白行</span>
-                        </button>
-                    </div>
-                    <div class="table-container">
-                        <table class="data-table" id="workTable">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>日期</th>
-                                    <th>組別</th>
-                                    <th>員工ID</th>
-                                    <th>姓名</th>
-                                    <th>班次</th>
-                                    <th>工單號</th>
-                                    <th>部門</th>
-                                    <th>類型</th>
-                                    <th>工作內容</th>
-                                    <th>地點</th>
-                                    <th>下單時間</th>
-                                    <th>開始時間</th>
-                                    <th>結束時間</th>
-                                    <th>狀態</th>
-                                    <th>OT</th>
-                                    <th>響應時間</th>
-                                    <th>工時</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <!-- 動態生成 -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="stats-box">
-                        <span class="stats-label">總工時：</span>
-                        <span id="totalHours" class="stats-number">0.0</span>
-                        <span class="stats-label">小時</span>
-                    </div>
+        <!-- 表格區域 -->
+        <div class="table-section">
+            <div class="table-header">
+                <span class="table-title">📋 工單記錄表（18欄標準格式）</span>
+                <div class="table-actions">
+                    <button onclick="addNewRow()" class="btn-sm btn-add">➕ 新增行</button>
+                    <button onclick="copyToExcel()" class="btn-sm btn-copy">📋 複製全部</button>
                 </div>
-
-                <!-- 操作按鈕 -->
-                <button onclick="copyToClipboard()" class="btn btn-success btn-lg btn-block">
-                    <span>📋</span>
-                    <span>複製全部資料 (貼入 Excel)</span>
-                </button>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table" id="workTable">
+                    <thead>
+                        <tr>
+                            <th class="col-seq">#</th>
+                            <th class="col-date">日期</th>
+                            <th class="col-group">組别</th>
+                            <th class="col-empid">員工編号</th>
+                            <th class="col-name">姓名</th>
+                            <th class="col-shift">更</th>
+                            <th class="col-wono">工單号碼</th>
+                            <th class="col-dept">部門</th>
+                            <th class="col-type">工作分類</th>
+                            <th class="col-content">内容</th>
+                            <th class="col-location">地點</th>
+                            <th class="col-time">接單時間</th>
+                            <th class="col-time">開始</th>
+                            <th class="col-time">完成</th>
+                            <th class="col-status">狀態</th>
+                            <th class="col-ot">OT</th>
+                            <th class="col-resp">Response</th>
+                            <th class="col-res">Resolution</th>
+                            <th class="col-action">刪</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            
+            <div class="table-footer">
+                <div style="font-size: var(--text-xs); color: var(--color-text-muted);">
+                    💡 提示：黃色欄位為關鍵欄位，請仔細核對
+                </div>
+                <div class="total-display">
+                    <span class="total-label">總工時：</span>
+                    <span id="totalHours" class="total-number">0.0</span>
+                    <span class="total-label">小時</span>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // 配置與資料
+        // 配置與預設值（基於 Excel 樣本）
         // ==========================================
         
-        // 地點對應表
+        var DEFAULT_VALUES = {
+            group: 'BD',
+            empId: '7620',
+            name: '堯',
+            shift: '08:45:00',
+            status: '完成',
+            ot: 'No',
+            responseTime: '00:05:00',
+            defaultDuration: 90  // 1.5小時 = 90分鐘
+        };
+
+        // 地點關鍵詞（簡化版，去除敏感字樣）
         var LOCATION_MAP = [
-            { keywords: ['Passion', 'passion'], location: 'Passion', dept: 'F&B', full: 'G/F Passion' },
-            { keywords: ['翠華'], location: '1/F 翠華餐廳', dept: 'F&B', full: '1/F 翠華餐廳' },
-            { keywords: ['有食辰'], location: '1/F 有食辰', dept: 'F&B', full: '1/F 有食辰' },
-            { keywords: ['珍味軒', '珍味'], location: '1/F 珍味軒', dept: 'F&B', full: '1/F 珍味軒' },
-            { keywords: ['丹桂', '丹桂軒'], location: '2/F 丹桂軒', dept: 'F&B', full: '2/F 丹桂軒' },
-            { keywords: ['珍淮', '珍淮閣'], location: '3/F 珍淮閣', dept: 'F&B', full: '3/F 珍淮閣' },
-            { keywords: ['長勝', '長勝坊'], location: '3/F 長勝坊', dept: 'F&B', full: '3/F 長勝坊' },
-            { keywords: ['風味', '風味居'], location: '5/F 風味居', dept: 'F&B', full: '5/F 風味居' },
-            { keywords: ['天峰', '天峰軒'], location: '6/F 天峰軒', dept: 'F&B', full: '6/F 天峰軒' },
-            { keywords: ['協成', '火鍋'], location: '10/F 協成火鍋', dept: 'F&B', full: '10/F 協成火鍋' },
-            { keywords: ['品味吧', '酒吧'], location: '16/F 品味吧', dept: 'F&B', full: '16/F 品味吧' },
-            { keywords: ['泳池', '健身'], location: '17/F 泳池及健身中心', dept: 'Leisure', full: '17/F 泳池及健身中心' },
-            { keywords: ['寫字樓', '辦公室', '工程部'], location: '16/F 工程部辦公室', dept: '工程', full: '16/F 工程部辦公室' }
+            { keys: ['16樓', '16F', '寫字樓', '辦公室', '工程部'], location: '16F 寫字樓', dept: '工程' },
+            { keys: ['6樓', '6F', '平台'], location: '6F 平台', dept: 'F&B' },
+            { keys: ['B2', '地庫', '貨倉'], location: 'B2', dept: 'HR&A' },
+            { keys: ['G樓', 'GF', '大堂', 'Passion'], location: 'G/F Passion', dept: 'F&B' },
+            { keys: ['1樓', '1F', '翠華'], location: '1/F 翠華餐廳', dept: 'F&B' },
+            { keys: ['5樓', '5F', '風味', '風味居'], location: '5/F 風味居', dept: 'F&B' },
+            { keys: ['10樓', '10F', '協成', '火鍋'], location: '10/F 協成火鍋', dept: 'F&B' },
+            { keys: ['17樓', '17F', '泳池', '健身'], location: '17/F 泳池', dept: 'Leisure' }
         ];
-        
-        // 資料儲存（僅記憶體，無持久化）
+
+        // 工作分類關鍵詞
+        var TYPE_MAP = [
+            { keys: ['早會', '總會', '開會', '會議', 'briefing', '晨會'], type: 'CMBD' },
+            { keys: ['保養', 'PM', '預防', '例行', '檢查', '維護'], type: 'PM' },
+            { keys: ['維修', '修理', '整', '換', '補', '安裝', '故障'], type: 'CMBD' }
+        ];
+
+        // 狀態管理
         var workData = [];
         var nextId = 1;
         var isRecording = false;
         var recognition = null;
-        
-        // 預設員工資訊
-        var DEFAULT_EMPLOYEE = {
-            group: 'BD',
-            empId: '7620',
-            name: '堯',
-            shift: '08:45:00'
-        };
-        
+        var lastInputText = '';
+
         // ==========================================
         // 工具函數
         // ==========================================
@@ -632,8 +506,9 @@
             div.appendChild(document.createTextNode(text));
             return div.innerHTML;
         }
-        
-        function showAlert(message, type) {
+
+        function showAlert(message, type, duration) {
+            duration = duration || 3000;
             var alertBox = document.getElementById('alertBox');
             alertBox.className = 'alert alert-' + type;
             alertBox.innerHTML = message;
@@ -641,9 +516,9 @@
             
             setTimeout(function() {
                 alertBox.style.display = 'none';
-            }, 5000);
+            }, duration);
         }
-        
+
         function getTodayDate() {
             var now = new Date();
             var year = now.getFullYear();
@@ -651,111 +526,98 @@
             var day = String(now.getDate()).padStart(2, '0');
             return year + '-' + month + '-' + day;
         }
-        
+
+        // Excel 日期序列號轉換（如需）
+        function dateToSerial(dateStr) {
+            if (!dateStr) return '';
+            var parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            
+            var year = parseInt(parts[0], 10);
+            var month = parseInt(parts[1], 10);
+            var day = parseInt(parts[2], 10);
+            
+            // 簡化：直接返回日期字串，Excel 會自動識別
+            return dateStr;
+        }
+
         // ==========================================
-        // 廣東話時間解析（核心功能）
+        // 廣東話時間解析（核心）
         // ==========================================
         
-        /**
-         * 解析廣東話口語時間
-         * 支援格式：
-         * - 十點三 = 10:15（三個字，每字5分鐘）
-         * - 十點九 = 10:45（九個字）
-         * - 十點半 = 10:30
-         * - 十點正 = 10:00
-         * - 十點 = 10:00
-         * - 10:30, 1030（阿拉伯數字）
-         */
-        function parseCantoneseTime(timeStr) {
-            if (!timeStr) return '';
+        function parseCantoneseTime(text) {
+            if (!text) return '';
             
-            timeStr = timeStr.trim().replace(/\s/g, '');
+            // 清理文字
+            text = text.replace(/\s/g, '');
             
-            // 阿拉伯數字格式：10:30 或 1030
-            var arabicMatch = timeStr.match(/^(\d{1,2})[:：]?(\d{2})$/);
-            if (arabicMatch) {
-                var hour = parseInt(arabicMatch[1], 10);
-                var minute = parseInt(arabicMatch[2], 10);
-                if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
-                    return formatTimeString(hour, minute);
-                }
-            }
-            
-            // 中文數字映射
-            var cnNums = {
-                '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5,
-                '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
-                '十一': 11, '十二': 12, '1': 1, '2': 2, '3': 3, '4': 4,
-                '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-                '11': 11, '12': 12
-            };
-            
-            // 廣東話口語格式
-            // 匹配：十點三、十點半、十點正、十點、10點3
+            // 匹配模式（依優先序）
             var patterns = [
-                /([一二兩三四五六七八九十\d]{1,2})[點:]([一二三四五六七八九十\d]|半|正)/,
-                /([一二兩三四五六七八九十\d]{1,2})[點:](\d{1,2})/
+                // 今朝/今日/尋日 + 時間
+                /(?:今朝|今日|尋日|聽日)?.*?(\d{1,2})[點:](\d{1,2}|[半一二三四五六七八九十])/,
+                // 純數字時間
+                /(\d{1,2})[點:](\d{2})/,
+                // 中文時間
+                /([一二兩三四五六七八九十]{1,2})[點:]([半一二三四五六七八九十\d])/
             ];
             
             for (var i = 0; i < patterns.length; i++) {
-                var match = timeStr.match(patterns[i]);
+                var match = text.match(patterns[i]);
                 if (match) {
-                    var hourStr = match[1];
-                    var minuteStr = match[2];
+                    var hour = parseChineseNumber(match[1]);
+                    var minute = parseMinute(match[2]);
                     
-                    var hour = cnNums[hourStr] || parseInt(hourStr, 10);
-                    if (!hour || hour < 0 || hour > 23) continue;
-                    
-                    var minute = 0;
-                    
-                    // 處理分鐘部分
-                    if (minuteStr === '半') {
-                        minute = 30;
-                    } else if (minuteStr === '正' || !minuteStr) {
-                        minute = 0;
-                    } else if (cnNums[minuteStr]) {
-                        // 中文數字（一-九）
-                        var num = cnNums[minuteStr];
-                        if (num >= 1 && num <= 12) {
-                            // 假設係「字」（5分鐘一格）
-                            minute = num * 5;
-                            // 特殊處理：如果超過 59，當作普通分鐘
-                            if (minute > 59) minute = num;
-                        } else {
-                            minute = num;
-                        }
-                    } else {
-                        // 阿拉伯數字
-                        minute = parseInt(minuteStr, 10);
-                    }
-                    
-                    if (minute >= 0 && minute < 60) {
-                        return formatTimeString(hour, minute);
+                    if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+                        return formatTime(hour, minute);
                     }
                 }
             }
             
             return '';
         }
-        
-        function formatTimeString(hour, minute) {
-            return String(hour).padStart(2, '0') + ':' + 
-                   String(minute).padStart(2, '0') + ':00';
+
+        function parseChineseNumber(str) {
+            var map = {
+                '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5,
+                '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+                '十一': 11, '十二': 12
+            };
+            
+            if (map[str]) return map[str];
+            var num = parseInt(str, 10);
+            return isNaN(num) ? 0 : num;
         }
-        
-        // ==========================================
-        // 持續時間解析
-        // ==========================================
-        
+
+        function parseMinute(str) {
+            if (str === '半') return 30;
+            if (str === '正' || !str) return 0;
+            
+            // 處理「字」（5分鐘一格）
+            var cnNum = parseChineseNumber(str);
+            if (cnNum > 0 && cnNum <= 12) {
+                // 1-12 假定為「字」
+                return cnNum * 5;
+            }
+            
+            var num = parseInt(str, 10);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function formatTime(hour, minute) {
+            var h = String(hour).padStart(2, '0');
+            var m = String(minute).padStart(2, '0');
+            return h + ':' + m + ':00';
+        }
+
         function parseDuration(text) {
-            // 匹配模式：兩個鐘, 2小時, 1.5小時, 90分鐘, 一個半小時, 半個鐘
+            // 匹配：兩個鐘、2小時、1.5小時、90分鐘、半個鐘
             var patterns = [
-                { regex: /(\d+\.?\d*)\s*(小時|hr|h|個鐘|粒鐘)/, multiplier: 60 },
-                { regex: /(一個半|半|一|兩|二|三|四|五|六|七|八|九|十)\s*(個半小時|個鐘|粒鐘|小時)/, multiplier: 60 },
-                { regex: /(\d+)\s*分鐘?/, multiplier: 1 }
+                { regex: /(\d+\.?\d*)\s*(小時|hr|h|個鐘|粒鐘)/, mult: 60 },
+                { regex: /(一個半|半|一|兩|二|三|四|五|六|七|八|九|十)\s*(個半小時|個鐘|粒鐘|小時)/, mult: 60 },
+                { regex: /(\d+)\s*分鐘?/, mult: 1 }
             ];
             
-            var timeMap = {
+            var map = {
                 '一個半': 90, '半': 30, '一': 60, '兩': 120, '二': 120,
                 '三': 180, '四': 240, '五': 300, '六': 360, '七': 420,
                 '八': 480, '九': 540, '十': 600
@@ -766,30 +628,32 @@
                 if (match) {
                     var val = match[1];
                     if (!isNaN(parseFloat(val))) {
-                        return Math.round(parseFloat(val) * patterns[i].multiplier);
+                        return Math.round(parseFloat(val) * patterns[i].mult);
                     }
-                    if (timeMap[val]) {
-                        return timeMap[val];
+                    if (map[val]) {
+                        return map[val];
                     }
                 }
             }
-            return 0;
+            
+            // 預設 1.5 小時
+            return DEFAULT_VALUES.defaultDuration;
         }
-        
+
         // ==========================================
         // 核心解析邏輯
         // ==========================================
         
         function parseInputText(text) {
             var result = {
-                locations: [],      // 改為陣列，支援多地點
-                primaryLocation: null,
-                department: '',
                 orderTime: '',
-                duration: 0,
+                duration: DEFAULT_VALUES.defaultDuration,
+                location: '',
+                department: '',
+                workType: 'CMBD',
                 content: '',
-                parsedItems: [],
-                warnings: []
+                originalText: text,
+                parsedItems: []
             };
             
             if (!text || text.trim() === '' || text === '請說話或輸入內容...') {
@@ -797,93 +661,68 @@
             }
             
             text = text.trim();
+            lastInputText = text;
             
-            // 1. 解析所有地點（唔再 break）
+            // 1. 解析時間（錨點）
+            result.orderTime = parseCantoneseTime(text);
+            if (result.orderTime) {
+                result.parsedItems.push({ label: '接單時間', value: result.orderTime });
+            } else {
+                // 無時間時使用預設
+                result.orderTime = DEFAULT_VALUES.shift;
+                result.parsedItems.push({ label: '接單時間', value: result.orderTime + ' (預設)' });
+            }
+            
+            // 2. 解析地點
             for (var i = 0; i < LOCATION_MAP.length; i++) {
                 var loc = LOCATION_MAP[i];
-                for (var j = 0; j < loc.keywords.length; j++) {
-                    if (text.indexOf(loc.keywords[j]) !== -1) {
-                        // 檢查係咪已經加過
-                        var alreadyAdded = false;
-                        for (var k = 0; k < result.locations.length; k++) {
-                            if (result.locations[k].location === loc.location) {
-                                alreadyAdded = true;
-                                break;
-                            }
-                        }
-                        
-                        if (!alreadyAdded) {
-                            result.locations.push({
-                                keyword: loc.keywords[j],
-                                location: loc.location,
-                                dept: loc.dept,
-                                full: loc.full
-                            });
-                        }
+                for (var j = 0; j < loc.keys.length; j++) {
+                    if (text.indexOf(loc.keys[j]) !== -1) {
+                        result.location = loc.location;
+                        result.department = loc.dept;
+                        result.parsedItems.push({ label: '地點', value: loc.location });
+                        result.parsedItems.push({ label: '部門', value: loc.dept });
                         break;
                     }
                 }
+                if (result.location) break;
             }
             
-            // 設定主要地點（第一個）
-            if (result.locations.length > 0) {
-                result.primaryLocation = result.locations[0];
-                result.department = result.primaryLocation.dept;
-                result.parsedItems.push({
-                    label: '地點',
-                    value: result.primaryLocation.full + (result.locations.length > 1 ? ' (+' + (result.locations.length - 1) + '個)' : '')
-                });
-            } else {
-                result.department = '工程';
-                result.parsedItems.push({ label: '部門', value: '工程 (預設)' });
-            }
-            
-            // 多地點警告
-            if (result.locations.length > 1) {
-                result.warnings.push('偵測到 ' + result.locations.length + ' 個地點：' + 
-                    result.locations.map(function(l) { return l.full; }).join('、'));
-            }
-            
-            // 2. 解析時間（搵所有可能嘅時間，取第一個作為下單時間）
-            var timeMatches = text.match(/(\d{1,2})[:點\s](\d{1,2}|[半正一二三四五六七八九十])|[一二兩三四五六七八九十]{1,2}[點:]([半正一二三四五六七八九十\d]|\d{1,2})/g);
-            
-            if (timeMatches && timeMatches.length > 0) {
-                result.orderTime = parseCantoneseTime(timeMatches[0]);
-                if (result.orderTime) {
-                    result.parsedItems.push({ label: '下單時間', value: result.orderTime });
+            // 3. 解析工作分類
+            for (var t = 0; t < TYPE_MAP.length; t++) {
+                var type = TYPE_MAP[t];
+                for (var k = 0; k < type.keys.length; k++) {
+                    if (text.indexOf(type.keys[k]) !== -1) {
+                        result.workType = type.type;
+                        result.parsedItems.push({ label: '工作分類', value: type.type });
+                        break;
+                    }
                 }
+                if (result.workType !== 'CMBD') break;
             }
             
-            // 3. 解析持續時間
-            result.duration = parseDuration(text);
-            if (result.duration > 0) {
-                var hours = Math.floor(result.duration / 60);
-                var mins = result.duration % 60;
-                var timeStr = hours > 0 ? hours + '小時' : '';
-                if (mins > 0) timeStr += mins + '分鐘';
-                result.parsedItems.push({ label: '工作時長', value: timeStr });
-            }
-            
-            // 4. 解析工作內容
+            // 4. 解析工作內容（提取動詞後的關鍵詞）
             var contentPatterns = [
-                /(?:做|整|修|檢查|處理|安裝|更換|清潔|維修)\s*([\u4e00-\u9fa5\w]{2,10})/,
-                /(?:關於|有關)\s*([\u4e00-\u9fa5\w]{2,10})/,
+                /(?:做|整|修|檢查|處理|安裝|更換|清潔|維修|補|開|搞)\s*([\u4e00-\u9fa5]{2,8})/,
+                /(?:關於|有關)\s*([\u4e00-\u9fa5]{2,8})/,
                 /([\u4e00-\u9fa5]{2,6})(?:問題|故障|維修|保養)/
             ];
             
             for (var p = 0; p < contentPatterns.length; p++) {
-                var contentMatch = text.match(contentPatterns[p]);
-                if (contentMatch) {
-                    var candidate = contentMatch[1];
-                    // 排除地點關鍵字
-                    var isLocation = false;
+                var match = text.match(contentPatterns[p]);
+                if (match) {
+                    var candidate = match[1];
+                    // 排除地點關鍵詞
+                    var isLoc = false;
                     for (var m = 0; m < LOCATION_MAP.length; m++) {
-                        if (LOCATION_MAP[m].keywords.indexOf(candidate) !== -1) {
-                            isLocation = true;
-                            break;
+                        for (var n = 0; n < LOCATION_MAP[m].keys.length; n++) {
+                            if (LOCATION_MAP[m].keys[n] === candidate) {
+                                isLoc = true;
+                                break;
+                            }
                         }
                     }
-                    if (!isLocation) {
+                    if (!isLoc) {
                         result.content = candidate;
                         result.parsedItems.push({ label: '工作內容', value: candidate });
                         break;
@@ -891,39 +730,80 @@
                 }
             }
             
+            // 5. 解析時長
+            var dur = parseDuration(text);
+            if (dur !== DEFAULT_VALUES.defaultDuration) {
+                result.duration = dur;
+                var hours = Math.floor(dur / 60);
+                var mins = dur % 60;
+                var timeStr = hours > 0 ? hours + '小時' : '';
+                if (mins > 0) timeStr += mins + '分';
+                result.parsedItems.push({ label: '預計時長', value: timeStr });
+            } else {
+                result.parsedItems.push({ label: '預計時長', value: '1.5小時 (預設)' });
+            }
+            
             return result;
         }
-        
+
         // ==========================================
-        // 資料填充邏輯
+        // 時間計算（核心業務邏輯）
+        // ==========================================
+        
+        function calculateTimes(orderTime, durationMinutes) {
+            // 接單時間 → 開始時間（+5分鐘 Response Time）
+            // → 完成時間（+預設工時）
+            
+            var orderMin = timeToMinutes(orderTime);
+            var startMin = orderMin + 5;  // 5分鐘 Response Time
+            var endMin = startMin + durationMinutes;
+            
+            return {
+                orderTime: minutesToTime(orderMin),
+                startTime: minutesToTime(startMin),
+                endTime: minutesToTime(endMin),
+                responseTime: '00:05:00',
+                resolutionTime: minutesToDuration(durationMinutes + 5)
+            };
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            var parts = timeStr.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+
+        function minutesToTime(minutes) {
+            minutes = minutes % (24 * 60);
+            if (minutes < 0) minutes += 24 * 60;
+            
+            var h = Math.floor(minutes / 60);
+            var m = minutes % 60;
+            return formatTime(h, m);
+        }
+
+        function minutesToDuration(minutes) {
+            var h = Math.floor(minutes / 60);
+            var m = minutes % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':00';
+        }
+
+        // ==========================================
+        // 資料填充
         // ==========================================
         
         function fillDataFromParse(parseResult) {
-            // 顯示多地點警告
-            var warningDiv = document.getElementById('multiLocationWarning');
-            var locationsDiv = document.getElementById('detectedLocations');
+            // 計算時間
+            var times = calculateTimes(parseResult.orderTime, parseResult.duration);
             
-            if (parseResult.warnings.length > 0) {
-                locationsDiv.innerHTML = parseResult.locations.map(function(l) {
-                    return '<span class="badge badge-amber mr-2">' + escapeHtml(l.full) + '</span>';
-                }).join('');
-                warningDiv.style.display = 'block';
-            } else {
-                warningDiv.style.display = 'none';
-            }
-            
-            if (!parseResult.primaryLocation && !parseResult.orderTime && parseResult.duration === 0) {
-                showAlert('未能從輸入中識別有效資訊，請檢查格式或手動輸入', 'warning');
-                return false;
-            }
-            
-            // 建立新行或更新最後一行
+            // 尋找或建立目標行
             var targetRow = null;
             var isNewRow = false;
             
             if (workData.length > 0) {
                 var lastRow = workData[workData.length - 1];
-                if (!lastRow.location && !lastRow.orderTime) {
+                // 檢查最後一行是否為空（無內容和地點）
+                if (!lastRow.content && !lastRow.location) {
                     targetRow = lastRow;
                 }
             }
@@ -934,44 +814,41 @@
                 isNewRow = true;
             }
             
-            // 填充資料
-            if (parseResult.primaryLocation) {
-                targetRow.location = parseResult.primaryLocation.location;
-                targetRow.dept = parseResult.primaryLocation.dept;
-            }
-            if (parseResult.orderTime) targetRow.orderTime = parseResult.orderTime;
+            // 填充資料（只覆蓋 AI 識別到的，保留用戶預設值）
+            targetRow.date = getTodayDate();
+            if (parseResult.location) targetRow.location = parseResult.location;
+            if (parseResult.department) targetRow.dept = parseResult.department;
+            if (parseResult.workType) targetRow.type = parseResult.workType;
             if (parseResult.content) targetRow.content = parseResult.content;
             
-            // 自動計算開始和結束時間
-            if (parseResult.orderTime) {
-                var orderMinutes = timeToMinutes(parseResult.orderTime);
-                var startMinutes = orderMinutes + 5; // 預設5分鐘後開始
-                targetRow.startTime = minutesToTime(startMinutes);
-                
-                if (parseResult.duration > 0) {
-                    var endMinutes = startMinutes + parseResult.duration;
-                    targetRow.endTime = minutesToTime(endMinutes);
-                }
-            }
+            // 時間欄位（核心）
+            targetRow.orderTime = times.orderTime;
+            targetRow.startTime = times.startTime;
+            targetRow.endTime = times.endTime;
+            targetRow.responseTime = times.responseTime;
+            targetRow.resTime = times.resolutionTime;
             
+            // 渲染
             renderTable();
             showParseFeedback(parseResult);
             
-            var msg = isNewRow ? '已新增新記錄' : '已更新現有記錄';
-            showAlert(msg + '，請檢查表格內容是否正確', 'success');
+            var msg = isNewRow ? '已新增記錄' : '已更新記錄';
+            showAlert(msg + '，請核對黃色標記欄位', 'success');
             
             return true;
         }
-        
+
         function showParseFeedback(parseResult) {
             var feedbackDiv = document.getElementById('parseFeedback');
             var detailsDiv = document.getElementById('parseDetails');
+            var originalDiv = document.getElementById('originalText');
             
             if (parseResult.parsedItems.length === 0) {
                 feedbackDiv.className = 'parse-feedback hidden';
                 return;
             }
             
+            // 顯示解析項目
             var html = '';
             for (var i = 0; i < parseResult.parsedItems.length; i++) {
                 var item = parseResult.parsedItems[i];
@@ -981,35 +858,34 @@
                 html += '</div>';
             }
             
-            // 顯示未識別的警告
-            var warnings = [];
-            if (!parseResult.primaryLocation) warnings.push('地點');
-            if (!parseResult.orderTime) warnings.push('時間');
-            if (parseResult.duration === 0) warnings.push('時長');
-            if (!parseResult.content) warnings.push('工作內容');
+            // 顯示未識別項目
+            var missing = [];
+            if (!parseResult.location) missing.push('地點');
+            if (!parseResult.content) missing.push('工作內容');
             
-            if (warnings.length > 0) {
-                html += '<div style="margin-top: 8px; color: var(--color-warning); font-size: var(--text-sm);">';
-                html += '⚠️ 未識別: ' + warnings.join(', ') + ' (請手動填寫)';
+            if (missing.length > 0) {
+                html += '<div style="grid-column: 1/-1; margin-top: 8px; color: var(--color-warning); font-size: var(--text-xs);">';
+                html += '⚠️ 未識別: ' + missing.join('、') + '（請手動填寫）';
                 html += '</div>';
             }
             
             detailsDiv.innerHTML = html;
+            originalDiv.innerHTML = escapeHtml(parseResult.originalText);
             feedbackDiv.className = 'parse-feedback';
         }
-        
+
         // ==========================================
-        // 表格操作（優化版 - 局部更新）
+        // 表格操作
         // ==========================================
         
         function createEmptyRow() {
             return {
                 id: nextId++,
                 date: getTodayDate(),
-                group: DEFAULT_EMPLOYEE.group,
-                empId: DEFAULT_EMPLOYEE.empId,
-                name: DEFAULT_EMPLOYEE.name,
-                shift: DEFAULT_EMPLOYEE.shift,
+                group: DEFAULT_VALUES.group,
+                empId: DEFAULT_VALUES.empId,
+                name: DEFAULT_VALUES.name,
+                shift: DEFAULT_VALUES.shift,
                 woNo: '',
                 dept: '',
                 type: 'CMBD',
@@ -1018,19 +894,18 @@
                 orderTime: '',
                 startTime: '',
                 endTime: '',
-                status: '完成',
-                ot: 'No',
-                responseTime: '00:05:00',
+                status: DEFAULT_VALUES.status,
+                ot: DEFAULT_VALUES.ot,
+                responseTime: DEFAULT_VALUES.responseTime,
                 resTime: ''
             };
         }
-        
+
         function initData() {
             workData.push(createEmptyRow());
             renderTable();
         }
-        
-        // 首次渲染（建立 DOM 結構）
+
         function renderTable() {
             var tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
@@ -1040,160 +915,142 @@
                 var tr = document.createElement('tr');
                 tr.id = 'row-' + i;
                 
-                // 建立每一個 cell
+                // 計算工時
+                var hours = calculateWorkHours(row.startTime, row.endTime);
+                
+                // 建立各欄位
                 var cells = [
-                    { key: 'id', width: '40px', editable: false },
-                    { key: 'date', width: '100px' },
-                    { key: 'group', width: '50px' },
-                    { key: 'empId', width: '60px' },
-                    { key: 'name', width: '50px' },
-                    { key: 'shift', width: '80px' },
-                    { key: 'woNo', width: '80px' },
-                    { key: 'dept', width: '60px' },
-                    { key: 'type', width: '60px' },
-                    { key: 'content', width: '150px' },
-                    { key: 'location', width: '150px' },
-                    { key: 'orderTime', width: '80px', highlight: true },
-                    { key: 'startTime', width: '80px' },
-                    { key: 'endTime', width: '80px' },
-                    { key: 'status', width: '50px' },
-                    { key: 'ot', width: '40px' },
-                    { key: 'responseTime', width: '80px' },
-                    { key: 'hours', width: '50px', editable: false, isCalculated: true },
-                    { key: 'action', width: '40px', editable: false, isAction: true }
+                    { key: 'id', val: row.id, editable: false, width: 'col-seq' },
+                    { key: 'date', val: row.date, highlight: true },
+                    { key: 'group', val: row.group },
+                    { key: 'empId', val: row.empId },
+                    { key: 'name', val: row.name },
+                    { key: 'shift', val: row.shift },
+                    { key: 'woNo', val: row.woNo || '' },
+                    { key: 'dept', val: row.dept || '', highlight: true },
+                    { key: 'type', val: row.type },
+                    { key: 'content', val: row.content || '', highlight: true },
+                    { key: 'location', val: row.location || '', highlight: true },
+                    { key: 'orderTime', val: row.orderTime || '', highlight: true },
+                    { key: 'startTime', val: row.startTime || '' },
+                    { key: 'endTime', val: row.endTime || '' },
+                    { key: 'status', val: row.status },
+                    { key: 'ot', val: row.ot },
+                    { key: 'responseTime', val: row.responseTime, editable: false },
+                    { key: 'resTime', val: row.resTime || '', editable: false },
+                    { key: 'action', val: '', isAction: true }
                 ];
                 
                 for (var c = 0; c < cells.length; c++) {
                     var cell = cells[c];
                     var td = document.createElement('td');
+                    if (cell.width) td.className = cell.width;
                     
                     if (cell.isAction) {
-                        td.innerHTML = '<button onclick="deleteRow(' + i + ')" style="color: var(--color-danger); border: none; background: none; cursor: pointer;">🗑️</button>';
-                    } else if (cell.isCalculated) {
-                        var hours = calculateHours(row.startTime, row.endTime);
-                        td.className = 'cell-hours';
-                        td.innerHTML = '<span id="hours-' + i + '">' + hours.toFixed(1) + '</span>';
+                        td.innerHTML = '<button onclick="deleteRow(' + i + ')" class="btn-delete">🗑</button>';
                     } else if (cell.editable !== false) {
                         var input = document.createElement('input');
                         input.type = 'text';
-                        input.className = 'table-input' + (cell.highlight ? ' table-input-highlight' : '');
-                        input.style.width = cell.width;
-                        input.value = row[cell.key] || '';
+                        input.className = 'table-input' + (cell.highlight ? ' cell-highlight' : '');
+                        input.value = cell.val;
                         input.setAttribute('data-row', i);
                         input.setAttribute('data-col', cell.key);
-                        
-                        // 使用 onchange 進行局部更新
                         input.onchange = function() {
-                            var r = parseInt(this.getAttribute('data-row'), 10);
-                            var col = this.getAttribute('data-col');
-                            updateRowData(r, col, this.value);
+                            updateRowData(parseInt(this.getAttribute('data-row'), 10), 
+                                         this.getAttribute('data-col'), 
+                                         this.value);
                         };
-                        
                         td.appendChild(input);
                     } else {
-                        td.innerHTML = row[cell.key];
+                        td.textContent = cell.val;
+                        if (cell.key === 'id') td.style.fontWeight = 'bold';
                     }
                     
                     tr.appendChild(td);
                 }
+                
+                // 工時欄位（計算值）
+                var hoursTd = document.createElement('td');
+                hoursTd.className = 'cell-hours';
+                hoursTd.innerHTML = '<span id="hours-' + i + '">' + hours.toFixed(1) + '</span>';
+                tr.appendChild(hoursTd);
                 
                 tbody.appendChild(tr);
             }
             
             calculateTotalHours();
         }
-        
-        // 局部更新：只更新資料同受影響嘅顯示
+
         function updateRowData(index, field, value) {
-            var oldValue = workData[index][field];
             workData[index][field] = value;
             
-            // 如果修改咗時間相關欄位，更新工時顯示
-            if (field === 'startTime' || field === 'endTime') {
-                var hours = calculateHours(workData[index].startTime, workData[index].endTime);
-                var hoursCell = document.getElementById('hours-' + index);
-                if (hoursCell) {
-                    hoursCell.innerText = hours.toFixed(1);
+            // 如果修改時間，重新計算工時
+            if (field === 'startTime' || field === 'endTime' || field === 'orderTime') {
+                // 如果改的是接單時間，連動更新開始和完成時間
+                if (field === 'orderTime' && value) {
+                    var times = calculateTimes(value, DEFAULT_VALUES.defaultDuration);
+                    workData[index].startTime = times.startTime;
+                    workData[index].endTime = times.endTime;
+                    workData[index].responseTime = times.responseTime;
+                    workData[index].resTime = times.resolutionTime;
+                    
+                    // 更新顯示
+                    renderTable();
+                    return;
                 }
+                
+                var hours = calculateWorkHours(workData[index].startTime, workData[index].endTime);
+                var hoursCell = document.getElementById('hours-' + index);
+                if (hoursCell) hoursCell.textContent = hours.toFixed(1);
                 calculateTotalHours();
             }
-            
-            // 如果修改咗部門，可以加入自動完成邏輯（未來擴展）
         }
-        
+
+        function calculateWorkHours(start, end) {
+            if (!start || !end) return 0;
+            var s = timeToMinutes(start);
+            var e = timeToMinutes(end);
+            if (e < s) e += 24 * 60; // 跨午夜
+            return (e - s) / 60;
+        }
+
+        function calculateTotalHours() {
+            var total = 0;
+            for (var i = 0; i < workData.length; i++) {
+                total += calculateWorkHours(workData[i].startTime, workData[i].endTime);
+            }
+            document.getElementById('totalHours').textContent = total.toFixed(1);
+        }
+
         function deleteRow(index) {
-            if (confirm('確定要刪除這行資料嗎？')) {
+            if (confirm('確定刪除第 ' + workData[index].id + ' 行？')) {
                 workData.splice(index, 1);
                 if (workData.length === 0) {
                     workData.push(createEmptyRow());
                 }
-                renderTable(); // 結構性改變需要重繪
-                showAlert('已刪除資料', 'success');
+                renderTable();
             }
         }
-        
+
         function addNewRow() {
             workData.push(createEmptyRow());
             renderTable();
-            showAlert('已新增空白行', 'success');
+            showAlert('已新增空白行', 'success', 2000);
         }
-        
-        // ==========================================
-        // 時間計算工具
-        // ==========================================
-        
-        function timeToMinutes(timeStr) {
-            if (!timeStr) return 0;
-            var parts = timeStr.split(':');
-            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-        }
-        
-        function minutesToTime(minutes) {
-            minutes = minutes % (24 * 60);
-            if (minutes < 0) minutes += 24 * 60;
-            
-            var h = Math.floor(minutes / 60);
-            var m = minutes % 60;
-            return formatTimeString(h, m);
-        }
-        
-        function calculateHours(start, end) {
-            if (!start || !end) return 0;
-            
-            var s = timeToMinutes(start);
-            var e = timeToMinutes(end);
-            
-            // 處理跨午夜
-            if (e < s) {
-                e += 24 * 60;
-            }
-            
-            return (e - s) / 60;
-        }
-        
-        function calculateTotalHours() {
-            var total = 0;
-            for (var i = 0; i < workData.length; i++) {
-                total += calculateHours(workData[i].startTime, workData[i].endTime);
-            }
-            document.getElementById('totalHours').innerText = total.toFixed(1);
-        }
-        
+
         // ==========================================
         // 語音輸入
         // ==========================================
         
         function initSpeechRecognition() {
             var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            var supportMsg = document.getElementById('browserSupport');
+            var statusDiv = document.getElementById('micStatus');
             
             if (!SpeechRecognition) {
-                supportMsg.innerHTML = '❌ 瀏覽器不支援語音輸入';
+                statusDiv.innerHTML = '❌ 不支援';
                 document.getElementById('micBtn').style.display = 'none';
                 return;
             }
-            
-            supportMsg.innerHTML = '✅ 語音輸入就緒';
             
             recognition = new SpeechRecognition();
             recognition.lang = 'zh-HK';
@@ -1202,9 +1059,8 @@
             
             recognition.onstart = function() {
                 isRecording = true;
-                document.getElementById('micBtn').className = 'btn btn-danger btn-mic recording';
-                document.getElementById('micIcon').innerText = '⏹';
-                document.getElementById('micStatus').innerText = '錄音中... (再撳一下停止)';
+                document.getElementById('micBtn').className = 'btn-mic recording';
+                statusDiv.innerHTML = '錄音中...';
             };
             
             recognition.onresult = function(event) {
@@ -1212,12 +1068,12 @@
                 for (var i = event.resultIndex; i < event.results.length; i++) {
                     transcript += event.results[i][0].transcript;
                 }
-                document.getElementById('inputDisplay').innerText = transcript;
+                document.getElementById('inputDisplay').textContent = transcript;
             };
             
             recognition.onerror = function(event) {
-                console.error('語音辨識錯誤:', event.error);
-                showAlert('語音辨識錯誤: ' + event.error, 'error');
+                console.error('語音錯誤:', event.error);
+                statusDiv.innerHTML = '錯誤: ' + event.error;
                 stopRecording();
             };
             
@@ -1233,85 +1089,100 @@
                 }
             };
         }
-        
+
         function stopRecording() {
             isRecording = false;
-            document.getElementById('micBtn').className = 'btn btn-primary btn-mic';
-            document.getElementById('micIcon').innerText = '🎤';
-            document.getElementById('micStatus').innerText = '撳一下錄音';
+            document.getElementById('micBtn').className = 'btn-mic';
+            document.getElementById('micStatus').innerHTML = '撳一下錄音';
         }
-        
+
         // ==========================================
-        // 匯出功能
+        // 匯出功能（關鍵：匹配 Excel 格式）
         // ==========================================
         
-        function copyToClipboard() {
+        function copyToExcel() {
             if (workData.length === 0) {
-                showAlert('沒有資料可复制', 'warning');
+                showAlert('無資料可复制', 'warning');
                 return;
             }
             
-            var columns = ['id', 'date', 'group', 'empId', 'name', 'shift', 'woNo', 'dept', 'type', 'content', 'location', 'orderTime', 'startTime', 'endTime', 'status', 'ot', 'responseTime', 'resTime'];
-            var lines = [];
+            // 嚴格按照 Excel 樣本的 18 欄順序
+            var headers = ['#', '日期', '組别', '員工編号', '姓名', '更', '工單号碼', 
+                        '部門', '工作分類', '内容', '地點', '接單時間', '開始', '完成', 
+                        '工單狀態', 'OT', 'Response Time', 'Resolution Time'];
             
-            // 標題列
-            lines.push(columns.join('\t'));
+            var lines = [headers.join('\t')];
             
-            // 資料列
             for (var i = 0; i < workData.length; i++) {
                 var row = workData[i];
-                var values = [];
-                for (var j = 0; j < columns.length; j++) {
-                    values.push(row[columns[j]] || '');
-                }
+                var values = [
+                    row.id,
+                    dateToSerial(row.date),
+                    row.group,
+                    row.empId,
+                    row.name,
+                    row.shift,
+                    row.woNo || '',
+                    row.dept || '',
+                    row.type,
+                    row.content || '',
+                    row.location || '',
+                    row.orderTime || '',
+                    row.startTime || '',
+                    row.endTime || '',
+                    row.status,
+                    row.ot,
+                    row.responseTime,
+                    row.resTime || ''
+                ];
                 lines.push(values.join('\t'));
             }
             
             var textToCopy = lines.join('\n');
             
+            // 嘗試現代 API，失敗則降級
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(function() {
-                    showAlert('✅ 已成功複製 ' + workData.length + ' 行資料到剪貼簿！', 'success');
-                }).catch(function(err) {
+                    showAlert('✅ 已複製 ' + workData.length + ' 行到剪貼簿！直接貼入 Excel 即可', 'success', 5000);
+                }).catch(function() {
                     fallbackCopy(textToCopy);
                 });
             } else {
                 fallbackCopy(textToCopy);
             }
         }
-        
+
         function fallbackCopy(text) {
             var textarea = document.createElement('textarea');
             textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
+            textarea.style.cssText = 'position:fixed;opacity:0;';
             document.body.appendChild(textarea);
             textarea.select();
             
             try {
-                var successful = document.execCommand('copy');
-                if (successful) {
-                    showAlert('✅ 已成功複製 ' + workData.length + ' 行資料到剪貼簿！', 'success');
+                var success = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (success) {
+                    showAlert('✅ 已複製 ' + workData.length + ' 行到剪貼簿！', 'success', 5000);
                 } else {
                     showAlert('❌ 複製失敗，請手動複製', 'error');
                 }
-            } catch (err) {
+            } catch (e) {
+                document.body.removeChild(textarea);
                 showAlert('❌ 瀏覽器不支援自動複製', 'error');
             }
-            
-            document.body.removeChild(textarea);
         }
-        
+
         // ==========================================
         // 事件處理
         // ==========================================
         
         function parseAndFill() {
-            var text = document.getElementById('inputDisplay').innerText;
+            var text = document.getElementById('inputDisplay').textContent;
             var result = parseInputText(text);
             fillDataFromParse(result);
         }
-        
+
         // 初始化
         window.onload = function() {
             initData();
@@ -1319,8 +1190,8 @@
             
             var inputDisplay = document.getElementById('inputDisplay');
             inputDisplay.onclick = function() {
-                if (this.innerText === '請說話或輸入內容...') {
-                    this.innerText = '';
+                if (this.textContent === '請說話或輸入內容...') {
+                    this.textContent = '';
                 }
             };
         };
