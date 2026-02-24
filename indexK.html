@@ -3,11 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工單記錄助手 v3.0</title>
+    <title>工單記錄助手 v3.1</title>
     <style>
-        /* ==========================================
-           Design System - CSS Variables
-           ========================================== */
         :root {
             --color-primary: #2563eb;
             --color-primary-dark: #1d4ed8;
@@ -50,7 +47,6 @@
 
         .container { max-width: 100%; margin: 0 auto; }
 
-        /* 緊湊頂部區域 */
         .header-section {
             background: var(--color-card);
             border: 1px solid var(--color-border);
@@ -144,7 +140,6 @@
             margin-top: var(--space-2);
         }
 
-        /* 解析反饋區 */
         .parse-feedback {
             background: #eff6ff;
             border-left: 3px solid var(--color-primary);
@@ -192,7 +187,6 @@
             margin-bottom: var(--space-1);
         }
 
-        /* 表格區域 - 緊湊設計 */
         .table-section {
             background: var(--color-card);
             border: 1px solid var(--color-border);
@@ -230,7 +224,6 @@
         .btn-add { background: var(--color-primary); color: white; }
         .btn-copy { background: var(--color-success); color: white; }
 
-        /* 表格本體 */
         .table-container {
             overflow-x: auto;
             max-height: 400px;
@@ -265,24 +258,23 @@
 
         .data-table tr:hover { background: #f8fafc; }
 
-        /* 欄位寬度優化 */
         .col-seq { width: 30px; }
         .col-date { width: 80px; }
         .col-group { width: 40px; }
         .col-empid { width: 60px; }
         .col-name { width: 50px; }
-        .col-shift { width: 70px; }
+        .col-shift { width: 60px; }
         .col-wono { width: 80px; }
-        .col-dept { width: 60px; }
+        .col-dept { width: 50px; }
         .col-type { width: 50px; }
         .col-content { width: 120px; }
         .col-location { width: 100px; }
-        .col-time { width: 70px; }
+        .col-time { width: 60px; }
         .col-status { width: 50px; }
-        .col-ot { width: 40px; }
-        .col-resp { width: 70px; }
-        .col-res { width: 70px; }
-        .col-action { width: 40px; }
+        .col-ot { width: 35px; }
+        .col-resp { width: 65px; }
+        .col-res { width: 65px; }
+        .col-action { width: 35px; }
 
         .table-input {
             width: 100%;
@@ -290,7 +282,6 @@
             padding: 2px 4px;
             font-size: var(--text-xs);
             font-family: inherit;
-            border-radius: var(--radius-sm);
         }
 
         .table-input:focus {
@@ -317,7 +308,6 @@
             font-size: var(--text-sm);
         }
 
-        /* 底部統計 */
         .table-footer {
             display: flex;
             justify-content: space-between;
@@ -342,7 +332,6 @@
             color: var(--color-text-muted);
         }
 
-        /* 提示訊息 */
         .alert {
             position: fixed;
             top: 10px;
@@ -359,7 +348,6 @@
         .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 
-        /* 響應式調整 */
         @media (max-width: 1200px) {
             .parse-grid { grid-template-columns: repeat(2, 1fr); }
         }
@@ -367,10 +355,8 @@
 </head>
 <body>
     <div class="container">
-        <!-- 提示訊息 -->
         <div id="alertBox" class="alert"></div>
 
-        <!-- 頂部輸入區 -->
         <div class="header-section">
             <div class="header-top">
                 <div class="mic-area">
@@ -391,7 +377,6 @@
                 </div>
             </div>
 
-            <!-- 解析反饋 -->
             <div id="parseFeedback" class="parse-feedback hidden">
                 <div class="parse-title">📝 AI 解析結果：</div>
                 <div id="parseDetails" class="parse-grid"></div>
@@ -402,7 +387,6 @@
             </div>
         </div>
 
-        <!-- 表格區域 -->
         <div class="table-section">
             <div class="table-header">
                 <span class="table-title">📋 工單記錄表（18欄標準格式）</span>
@@ -455,22 +439,17 @@
     </div>
 
     <script>
-        // ==========================================
-        // 配置與預設值（基於 Excel 樣本）
-        // ==========================================
-        
         var DEFAULT_VALUES = {
             group: 'BD',
-            empId: '7620',
-            name: '堯',
-            shift: '08:45:00',
+            empId: '',
+            name: '',
+            shift: '08:45',
             status: '完成',
             ot: 'No',
             responseTime: '00:05:00',
-            defaultDuration: 90  // 1.5小時 = 90分鐘
+            defaultDuration: 90
         };
 
-        // 地點關鍵詞（簡化版，去除敏感字樣）
         var LOCATION_MAP = [
             { keys: ['16樓', '16F', '寫字樓', '辦公室', '工程部'], location: '16F 寫字樓', dept: '工程' },
             { keys: ['6樓', '6F', '平台'], location: '6F 平台', dept: 'F&B' },
@@ -482,24 +461,18 @@
             { keys: ['17樓', '17F', '泳池', '健身'], location: '17/F 泳池', dept: 'Leisure' }
         ];
 
-        // 工作分類關鍵詞
         var TYPE_MAP = [
             { keys: ['早會', '總會', '開會', '會議', 'briefing', '晨會'], type: 'CMBD' },
             { keys: ['保養', 'PM', '預防', '例行', '檢查', '維護'], type: 'PM' },
             { keys: ['維修', '修理', '整', '換', '補', '安裝', '故障'], type: 'CMBD' }
         ];
 
-        // 狀態管理
         var workData = [];
         var nextId = 1;
         var isRecording = false;
         var recognition = null;
         var lastInputText = '';
 
-        // ==========================================
-        // 工具函數
-        // ==========================================
-        
         function escapeHtml(text) {
             if (!text) return '';
             var div = document.createElement('div');
@@ -521,43 +494,19 @@
 
         function getTodayDate() {
             var now = new Date();
-            var year = now.getFullYear();
-            var month = String(now.getMonth() + 1).padStart(2, '0');
             var day = String(now.getDate()).padStart(2, '0');
-            return year + '-' + month + '-' + day;
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var year = now.getFullYear();
+            return day + '/' + month + '/' + year;
         }
 
-        // Excel 日期序列號轉換（如需）
-        function dateToSerial(dateStr) {
-            if (!dateStr) return '';
-            var parts = dateStr.split('-');
-            if (parts.length !== 3) return dateStr;
-            
-            var year = parseInt(parts[0], 10);
-            var month = parseInt(parts[1], 10);
-            var day = parseInt(parts[2], 10);
-            
-            // 簡化：直接返回日期字串，Excel 會自動識別
-            return dateStr;
-        }
-
-        // ==========================================
-        // 廣東話時間解析（核心）
-        // ==========================================
-        
         function parseCantoneseTime(text) {
             if (!text) return '';
-            
-            // 清理文字
             text = text.replace(/\s/g, '');
             
-            // 匹配模式（依優先序）
             var patterns = [
-                // 今朝/今日/尋日 + 時間
                 /(?:今朝|今日|尋日|聽日)?.*?(\d{1,2})[點:](\d{1,2}|[半一二三四五六七八九十])/,
-                // 純數字時間
                 /(\d{1,2})[點:](\d{2})/,
-                // 中文時間
                 /([一二兩三四五六七八九十]{1,2})[點:]([半一二三四五六七八九十\d])/
             ];
             
@@ -572,7 +521,6 @@
                     }
                 }
             }
-            
             return '';
         }
 
@@ -592,10 +540,8 @@
             if (str === '半') return 30;
             if (str === '正' || !str) return 0;
             
-            // 處理「字」（5分鐘一格）
             var cnNum = parseChineseNumber(str);
             if (cnNum > 0 && cnNum <= 12) {
-                // 1-12 假定為「字」
                 return cnNum * 5;
             }
             
@@ -606,11 +552,10 @@
         function formatTime(hour, minute) {
             var h = String(hour).padStart(2, '0');
             var m = String(minute).padStart(2, '0');
-            return h + ':' + m + ':00';
+            return h + ':' + m;
         }
 
         function parseDuration(text) {
-            // 匹配：兩個鐘、2小時、1.5小時、90分鐘、半個鐘
             var patterns = [
                 { regex: /(\d+\.?\d*)\s*(小時|hr|h|個鐘|粒鐘)/, mult: 60 },
                 { regex: /(一個半|半|一|兩|二|三|四|五|六|七|八|九|十)\s*(個半小時|個鐘|粒鐘|小時)/, mult: 60 },
@@ -635,15 +580,105 @@
                     }
                 }
             }
-            
-            // 預設 1.5 小時
             return DEFAULT_VALUES.defaultDuration;
         }
 
         // ==========================================
-        // 核心解析邏輯
+        // 核心：精簡內容提取
         // ==========================================
         
+        function extractContent(text) {
+            if (!text) return '';
+            
+            // 步驟 1：移除時間、地點標記
+            var cleaned = text;
+            
+            // 移除常見前綴
+            var prefixes = ['今朝', '今日', '尋日', '聽日', '早上', '中午', '下午', '夜晚'];
+            for (var i = 0; i < prefixes.length; i++) {
+                cleaned = cleaned.replace(prefixes[i], '');
+            }
+            
+            // 移除地點描述（簡化處理）
+            for (var j = 0; j < LOCATION_MAP.length; j++) {
+                for (var k = 0; k < LOCATION_MAP[j].keys.length; k++) {
+                    cleaned = cleaned.replace(LOCATION_MAP[j].keys[k], '');
+                }
+            }
+            
+            // 移除時間數字
+            cleaned = cleaned.replace(/\d{1,2}[點:]\d{1,2}/g, '');
+            cleaned = cleaned.replace(/\d{1,2}點半/g, '');
+            cleaned = cleaned.replace(/[一二兩三四五六七八九十]{1,2}點[半一二三四五六七八九十]/g, '');
+            
+            // 步驟 2：提取「係」之後的內容（最優先）
+            var shiMatch = cleaned.match(/工作內容係(.{2,8})|係(.{2,8})$/);
+            if (shiMatch) {
+                var result = shiMatch[1] || shiMatch[2];
+                result = result.replace(/[，。,.]/g, '').trim();
+                if (result.length >= 2 && result.length <= 8) {
+                    return removeDuplicate(result);
+                }
+            }
+            
+            // 步驟 3：提取動詞後的簡短短語
+            var verbPatterns = [
+                /(?:去|到|喺|在).{0,3}(?:做|整|修|檢查|處理|安裝|更換|清潔|維修|補|開|搞)(.{2,6})/,
+                /(?:做|整|修|檢查|處理|安裝|更換|清潔|維修|補|開|搞)(.{2,6})/,
+                /(.{2,4})(?:問題|故障|維修|保養|工作)/
+            ];
+            
+            for (var p = 0; p < verbPatterns.length; p++) {
+                var match = cleaned.match(verbPatterns[p]);
+                if (match) {
+                    var result = match[1].replace(/[，。,.]/g, '').trim();
+                    if (result.length >= 2 && result.length <= 6) {
+                        return removeDuplicate(result);
+                    }
+                }
+            }
+            
+            // 步驟 4：最後手段，取剩餘文字中最長的連續中文字
+            var cnMatches = cleaned.match(/[\u4e00-\u9fa5]{2,6}/g);
+            if (cnMatches && cnMatches.length > 0) {
+                // 取最長但不超過6字的
+                var best = '';
+                for (var m = 0; m < cnMatches.length; m++) {
+                    if (cnMatches[m].length > best.length && cnMatches[m].length <= 6) {
+                        best = cnMatches[m];
+                    }
+                }
+                if (best) return removeDuplicate(best);
+            }
+            
+            return '';
+        }
+        
+        function removeDuplicate(str) {
+            // 檢查重複模式，如「早會...早會」
+            if (str.length >= 4) {
+                var half = Math.floor(str.length / 2);
+                var first = str.substring(0, half);
+                var second = str.substring(half);
+                
+                // 如果前後半部分相似，取前半
+                if (str.indexOf(first) === 0 && str.lastIndexOf(first) > 0) {
+                    return first;
+                }
+            }
+            
+            // 檢查首尾重複2字以上
+            if (str.length >= 5) {
+                var head = str.substring(0, 2);
+                var tail = str.substring(str.length - 2);
+                if (head === tail) {
+                    return str.substring(0, str.length - 2);
+                }
+            }
+            
+            return str;
+        }
+
         function parseInputText(text) {
             var result = {
                 orderTime: '',
@@ -663,17 +698,16 @@
             text = text.trim();
             lastInputText = text;
             
-            // 1. 解析時間（錨點）
+            // 解析時間
             result.orderTime = parseCantoneseTime(text);
             if (result.orderTime) {
                 result.parsedItems.push({ label: '接單時間', value: result.orderTime });
             } else {
-                // 無時間時使用預設
                 result.orderTime = DEFAULT_VALUES.shift;
                 result.parsedItems.push({ label: '接單時間', value: result.orderTime + ' (預設)' });
             }
             
-            // 2. 解析地點
+            // 解析地點
             for (var i = 0; i < LOCATION_MAP.length; i++) {
                 var loc = LOCATION_MAP[i];
                 for (var j = 0; j < loc.keys.length; j++) {
@@ -681,56 +715,31 @@
                         result.location = loc.location;
                         result.department = loc.dept;
                         result.parsedItems.push({ label: '地點', value: loc.location });
-                        result.parsedItems.push({ label: '部門', value: loc.dept });
                         break;
                     }
                 }
                 if (result.location) break;
             }
             
-            // 3. 解析工作分類
+            // 解析工作分類
             for (var t = 0; t < TYPE_MAP.length; t++) {
-                var type = TYPE_MAP[t];
-                for (var k = 0; k < type.keys.length; k++) {
-                    if (text.indexOf(type.keys[k]) !== -1) {
-                        result.workType = type.type;
-                        result.parsedItems.push({ label: '工作分類', value: type.type });
+                for (var k = 0; k < TYPE_MAP[t].keys.length; k++) {
+                    if (text.indexOf(TYPE_MAP[t].keys[k]) !== -1) {
+                        result.workType = TYPE_MAP[t].type;
+                        result.parsedItems.push({ label: '工作分類', value: result.workType });
                         break;
                     }
                 }
                 if (result.workType !== 'CMBD') break;
             }
             
-            // 4. 解析工作內容（提取動詞後的關鍵詞）
-            var contentPatterns = [
-                /(?:做|整|修|檢查|處理|安裝|更換|清潔|維修|補|開|搞)\s*([\u4e00-\u9fa5]{2,8})/,
-                /(?:關於|有關)\s*([\u4e00-\u9fa5]{2,8})/,
-                /([\u4e00-\u9fa5]{2,6})(?:問題|故障|維修|保養)/
-            ];
-            
-            for (var p = 0; p < contentPatterns.length; p++) {
-                var match = text.match(contentPatterns[p]);
-                if (match) {
-                    var candidate = match[1];
-                    // 排除地點關鍵詞
-                    var isLoc = false;
-                    for (var m = 0; m < LOCATION_MAP.length; m++) {
-                        for (var n = 0; n < LOCATION_MAP[m].keys.length; n++) {
-                            if (LOCATION_MAP[m].keys[n] === candidate) {
-                                isLoc = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!isLoc) {
-                        result.content = candidate;
-                        result.parsedItems.push({ label: '工作內容', value: candidate });
-                        break;
-                    }
-                }
+            // 解析內容（新邏輯）
+            result.content = extractContent(text);
+            if (result.content) {
+                result.parsedItems.push({ label: '工作內容', value: result.content });
             }
             
-            // 5. 解析時長
+            // 解析時長
             var dur = parseDuration(text);
             if (dur !== DEFAULT_VALUES.defaultDuration) {
                 result.duration = dur;
@@ -739,23 +748,14 @@
                 var timeStr = hours > 0 ? hours + '小時' : '';
                 if (mins > 0) timeStr += mins + '分';
                 result.parsedItems.push({ label: '預計時長', value: timeStr });
-            } else {
-                result.parsedItems.push({ label: '預計時長', value: '1.5小時 (預設)' });
             }
             
             return result;
         }
 
-        // ==========================================
-        // 時間計算（核心業務邏輯）
-        // ==========================================
-        
         function calculateTimes(orderTime, durationMinutes) {
-            // 接單時間 → 開始時間（+5分鐘 Response Time）
-            // → 完成時間（+預設工時）
-            
             var orderMin = timeToMinutes(orderTime);
-            var startMin = orderMin + 5;  // 5分鐘 Response Time
+            var startMin = orderMin + 5;
             var endMin = startMin + durationMinutes;
             
             return {
@@ -788,21 +788,14 @@
             return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':00';
         }
 
-        // ==========================================
-        // 資料填充
-        // ==========================================
-        
         function fillDataFromParse(parseResult) {
-            // 計算時間
             var times = calculateTimes(parseResult.orderTime, parseResult.duration);
             
-            // 尋找或建立目標行
             var targetRow = null;
             var isNewRow = false;
             
             if (workData.length > 0) {
                 var lastRow = workData[workData.length - 1];
-                // 檢查最後一行是否為空（無內容和地點）
                 if (!lastRow.content && !lastRow.location) {
                     targetRow = lastRow;
                 }
@@ -814,21 +807,18 @@
                 isNewRow = true;
             }
             
-            // 填充資料（只覆蓋 AI 識別到的，保留用戶預設值）
             targetRow.date = getTodayDate();
             if (parseResult.location) targetRow.location = parseResult.location;
             if (parseResult.department) targetRow.dept = parseResult.department;
             if (parseResult.workType) targetRow.type = parseResult.workType;
             if (parseResult.content) targetRow.content = parseResult.content;
             
-            // 時間欄位（核心）
             targetRow.orderTime = times.orderTime;
             targetRow.startTime = times.startTime;
             targetRow.endTime = times.endTime;
             targetRow.responseTime = times.responseTime;
             targetRow.resTime = times.resolutionTime;
             
-            // 渲染
             renderTable();
             showParseFeedback(parseResult);
             
@@ -848,7 +838,6 @@
                 return;
             }
             
-            // 顯示解析項目
             var html = '';
             for (var i = 0; i < parseResult.parsedItems.length; i++) {
                 var item = parseResult.parsedItems[i];
@@ -858,7 +847,6 @@
                 html += '</div>';
             }
             
-            // 顯示未識別項目
             var missing = [];
             if (!parseResult.location) missing.push('地點');
             if (!parseResult.content) missing.push('工作內容');
@@ -874,10 +862,6 @@
             feedbackDiv.className = 'parse-feedback';
         }
 
-        // ==========================================
-        // 表格操作
-        // ==========================================
-        
         function createEmptyRow() {
             return {
                 id: nextId++,
@@ -912,13 +896,11 @@
             
             for (var i = 0; i < workData.length; i++) {
                 var row = workData[i];
+                var hours = calculateWorkHours(row.startTime, row.endTime);
+                
                 var tr = document.createElement('tr');
                 tr.id = 'row-' + i;
                 
-                // 計算工時
-                var hours = calculateWorkHours(row.startTime, row.endTime);
-                
-                // 建立各欄位
                 var cells = [
                     { key: 'id', val: row.id, editable: false, width: 'col-seq' },
                     { key: 'date', val: row.date, highlight: true },
@@ -952,6 +934,7 @@
                         var input = document.createElement('input');
                         input.type = 'text';
                         input.className = 'table-input' + (cell.highlight ? ' cell-highlight' : '');
+                        input.style.width = cell.width ? '100%' : '100%';
                         input.value = cell.val;
                         input.setAttribute('data-row', i);
                         input.setAttribute('data-col', cell.key);
@@ -969,7 +952,6 @@
                     tr.appendChild(td);
                 }
                 
-                // 工時欄位（計算值）
                 var hoursTd = document.createElement('td');
                 hoursTd.className = 'cell-hours';
                 hoursTd.innerHTML = '<span id="hours-' + i + '">' + hours.toFixed(1) + '</span>';
@@ -984,17 +966,13 @@
         function updateRowData(index, field, value) {
             workData[index][field] = value;
             
-            // 如果修改時間，重新計算工時
             if (field === 'startTime' || field === 'endTime' || field === 'orderTime') {
-                // 如果改的是接單時間，連動更新開始和完成時間
                 if (field === 'orderTime' && value) {
                     var times = calculateTimes(value, DEFAULT_VALUES.defaultDuration);
                     workData[index].startTime = times.startTime;
                     workData[index].endTime = times.endTime;
                     workData[index].responseTime = times.responseTime;
                     workData[index].resTime = times.resolutionTime;
-                    
-                    // 更新顯示
                     renderTable();
                     return;
                 }
@@ -1010,7 +988,7 @@
             if (!start || !end) return 0;
             var s = timeToMinutes(start);
             var e = timeToMinutes(end);
-            if (e < s) e += 24 * 60; // 跨午夜
+            if (e < s) e += 24 * 60;
             return (e - s) / 60;
         }
 
@@ -1039,65 +1017,7 @@
         }
 
         // ==========================================
-        // 語音輸入
-        // ==========================================
-        
-        function initSpeechRecognition() {
-            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            var statusDiv = document.getElementById('micStatus');
-            
-            if (!SpeechRecognition) {
-                statusDiv.innerHTML = '❌ 不支援';
-                document.getElementById('micBtn').style.display = 'none';
-                return;
-            }
-            
-            recognition = new SpeechRecognition();
-            recognition.lang = 'zh-HK';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            
-            recognition.onstart = function() {
-                isRecording = true;
-                document.getElementById('micBtn').className = 'btn-mic recording';
-                statusDiv.innerHTML = '錄音中...';
-            };
-            
-            recognition.onresult = function(event) {
-                var transcript = '';
-                for (var i = event.resultIndex; i < event.results.length; i++) {
-                    transcript += event.results[i][0].transcript;
-                }
-                document.getElementById('inputDisplay').textContent = transcript;
-            };
-            
-            recognition.onerror = function(event) {
-                console.error('語音錯誤:', event.error);
-                statusDiv.innerHTML = '錯誤: ' + event.error;
-                stopRecording();
-            };
-            
-            recognition.onend = function() {
-                stopRecording();
-            };
-            
-            document.getElementById('micBtn').onclick = function() {
-                if (isRecording) {
-                    recognition.stop();
-                } else {
-                    recognition.start();
-                }
-            };
-        }
-
-        function stopRecording() {
-            isRecording = false;
-            document.getElementById('micBtn').className = 'btn-mic';
-            document.getElementById('micStatus').innerHTML = '撳一下錄音';
-        }
-
-        // ==========================================
-        // 匯出功能（關鍵：匹配 Excel 格式）
+        // 關鍵修訂：複製無標題，純資料行
         // ==========================================
         
         function copyToExcel() {
@@ -1106,18 +1026,13 @@
                 return;
             }
             
-            // 嚴格按照 Excel 樣本的 18 欄順序
-            var headers = ['#', '日期', '組别', '員工編号', '姓名', '更', '工單号碼', 
-                        '部門', '工作分類', '内容', '地點', '接單時間', '開始', '完成', 
-                        '工單狀態', 'OT', 'Response Time', 'Resolution Time'];
-            
-            var lines = [headers.join('\t')];
+            var lines = [];
             
             for (var i = 0; i < workData.length; i++) {
                 var row = workData[i];
                 var values = [
                     row.id,
-                    dateToSerial(row.date),
+                    row.date,
                     row.group,
                     row.empId,
                     row.name,
@@ -1140,7 +1055,6 @@
             
             var textToCopy = lines.join('\n');
             
-            // 嘗試現代 API，失敗則降級
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(function() {
                     showAlert('✅ 已複製 ' + workData.length + ' 行到剪貼簿！直接貼入 Excel 即可', 'success', 5000);
@@ -1173,17 +1087,65 @@
             }
         }
 
-        // ==========================================
-        // 事件處理
-        // ==========================================
-        
+        function initSpeechRecognition() {
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            var statusDiv = document.getElementById('micStatus');
+            
+            if (!SpeechRecognition) {
+                statusDiv.innerHTML = '❌ 不支援';
+                document.getElementById('micBtn').style.display = 'none';
+                return;
+            }
+            
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-HK';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            recognition.onstart = function() {
+                isRecording = true;
+                document.getElementById('micBtn').className = 'btn-mic recording';
+                statusDiv.innerHTML = '錄音中...';
+            };
+            
+            recognition.onresult = function(event) {
+                var transcript = '';
+                for (var i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                document.getElementById('inputDisplay').textContent = transcript;
+            };
+            
+            recognition.onerror = function(event) {
+                statusDiv.innerHTML = '錯誤: ' + event.error;
+                stopRecording();
+            };
+            
+            recognition.onend = function() {
+                stopRecording();
+            };
+            
+            document.getElementById('micBtn').onclick = function() {
+                if (isRecording) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            };
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById('micBtn').className = 'btn-mic';
+            document.getElementById('micStatus').innerHTML = '撳一下錄音';
+        }
+
         function parseAndFill() {
             var text = document.getElementById('inputDisplay').textContent;
             var result = parseInputText(text);
             fillDataFromParse(result);
         }
 
-        // 初始化
         window.onload = function() {
             initData();
             initSpeechRecognition();
