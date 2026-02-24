@@ -3,153 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>澳門維修報工助手 - 互動編輯器</title>
+    <title>報工助手 - PC 版 v1.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .recording-active { animation: pulse 1.5s infinite; background-color: #ef4444 !important; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        table input { width: 100%; border: none; background: transparent; padding: 6px; font-size: 13px; font-weight: 600; }
-        table input:focus { background: #f0f9ff; outline: none; border-radius: 4px; box-shadow: inset 0 0 0 1px #bae6fd; }
-        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .recording-active { animation: pulse 1.2s infinite; background-color: #ef4444 !important; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        body { font-size: 18px; font-family: -apple-system, sans-serif; }
+        input { font-size: 20px !important; font-weight: 700 !important; border-radius: 8px; padding: 6px 12px; border: 2px solid #cbd5e1; width: 100%; }
+        input:focus { border-color: #3b82f6; background-color: #f8fafc; outline: none; }
+        .card { background: white; border-radius: 35px; border: 4px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body class="bg-slate-50 p-2 md:p-6">
-    <div class="max-w-full mx-auto space-y-4">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[180px]">
-                <button id="micBtn" class="w-20 h-20 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center mb-3">
-                    <span id="micIcon" class="text-3xl">🎤</span>
+<body class="bg-slate-100 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <div class="bg-amber-50 border-l-8 border-amber-500 p-6 rounded-2xl">
+            <h3 class="text-2xl font-black text-amber-900 mb-2 underline">⚠️ 報工責任提醒 (Supervisor/Tech Only)</h3>
+            <p class="text-amber-800 font-bold text-lg">AI 語音識別僅作填表輔助。複製到 Excel 前，請務必手動檢查所有時間、內容及地點！</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-1 card p-10 flex flex-col items-center justify-center bg-white">
+                <button id="micBtn" class="w-36 h-36 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center mb-6 active:scale-90 transition-all">
+                    <span id="micIcon" class="text-7xl">🎤</span>
                 </button>
-                <p class="font-bold text-slate-700 text-sm text-center">撳一下開始錄音<br><span class="text-[10px] font-normal text-slate-400 text-center">講完後請再撳一下結束</span></p>
+                <p id="micText" class="font-black text-2xl text-slate-700">撳一下錄音</p>
             </div>
-            <div class="lg:col-span-3 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-[11px] font-black text-blue-600 uppercase tracking-widest italic">🔊 師傅錄音即時原文</label>
-                    <span id="statusTag" class="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-400 font-bold">STANDBY</span>
-                </div>
-                <div id="rawDisplay" class="text-slate-800 text-lg leading-relaxed flex-grow p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 overflow-y-auto max-h-[100px]">
-                    等待錄音... (範例：「堯，7620，八點九收單喺 16 樓早會。」)
+            
+            <div class="lg:col-span-3 card p-8 bg-white">
+                <label class="text-blue-600 font-black text-xl flex items-center gap-2 mb-3">
+                    <span class="w-4 h-4 bg-blue-600 rounded-full italic"></span> 語音原文 (可直接修改)：
+                </label>
+                <div id="rawDisplay" class="text-3xl font-bold leading-relaxed p-6 bg-slate-50 rounded-3xl border-4 border-dashed border-slate-200 min-h-[160px] text-slate-800" contenteditable="true">
+                    等待中... (例：12點半去1樓翠華整嘢，做左一個半鐘)
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 class="font-black text-xl text-slate-900">📋 Excel 數據編輯預覽 (18 欄)</h2>
-                <div class="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-200">
-                    <span class="text-xs font-bold text-slate-500 uppercase">今日累計時數：</span>
-                    <span id="totalHours" class="text-3xl font-black text-rose-600 tracking-tighter">0.0</span>
-                    <span class="text-xs font-bold text-slate-500"> / 7.0 HR</span>
+        <div class="card overflow-hidden bg-white">
+            <div class="p-8 bg-slate-50 border-b-4 flex justify-between items-center">
+                <h2 class="font-black text-4xl text-slate-800 italic uppercase">Workorder Dashboard</h2>
+                <div class="text-right bg-white px-10 py-5 rounded-3xl border-4 border-blue-100">
+                    <span class="text-sm font-black text-slate-400 block tracking-widest">今日累計 (HR)</span>
+                    <span id="totalHours" class="text-6xl font-black text-rose-600 tracking-tighter">0.0</span>
+                    <span class="text-2xl font-bold text-slate-400">/ 7.0</span>
                 </div>
             </div>
-            <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full text-left border-collapse min-w-[1600px]">
-                    <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase font-black tracking-wider">
-                        <tr>
-                            <th class="p-4 border-b">#</th><th class="p-4 border-b">日期</th><th class="p-4 border-b">組別</th>
-                            <th class="p-4 border-b">員工編號</th><th class="p-4 border-b text-blue-600 bg-blue-50/30">姓名</th>
-                            <th class="p-4 border-b">更</th><th class="p-4 border-b">工單號碼</th><th class="p-4 border-b">部門</th>
-                            <th class="p-4 border-b">工作分類</th><th class="p-4 border-b text-blue-600 bg-blue-50/30">內容</th>
-                            <th class="p-4 border-b text-blue-600 bg-blue-50/30">地點</th><th class="p-4 border-b bg-amber-50 text-amber-700">接單時間(Anchor)</th>
-                            <th class="p-4 border-b">開始時間</th><th class="p-4 border-b">完成時間</th><th class="p-4 border-b">狀態</th>
-                            <th class="p-4 border-b">OT</th><th class="p-4 border-b">Response</th><th class="p-4 border-b">Resolution</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
+            
+            <div class="p-6 overflow-x-auto">
+                <table class="w-full border-separate border-spacing-y-8">
+                    <tbody id="tableBody">
+                        </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="flex flex-col md:flex-row gap-4 pb-12">
-            <button onclick="copyToExcel()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-3xl font-black shadow-lg active:scale-95 text-xl flex items-center justify-center gap-3">
-                <span>📋</span> 複製到 Excel (Tab 格式)
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pb-24">
+            <button onclick="copyToExcel()" class="md:col-span-2 bg-emerald-600 text-white py-12 rounded-[40px] font-black shadow-2xl text-5xl active:scale-95 transition-all">
+                📋 複製 18 欄資料
             </button>
-            <button onclick="addNewRow()" class="bg-white text-slate-700 px-10 py-5 rounded-3xl font-black border border-slate-200 shadow-sm active:scale-95">➕ 加新單</button>
+            <button onclick="addNewRow()" class="bg-slate-800 text-white py-12 rounded-[40px] font-black text-3xl active:scale-95 transition-all">
+                ➕ 加新單
+            </button>
         </div>
     </div>
 
     <script>
-        const cols = ["id", "date", "group", "empId", "name", "shift", "woNo", "dept", "type", "content", "location", "orderTime", "startTime", "endTime", "status", "ot", "responseTime", "resTime"];
-        let rowData = [{ id: 1, date: new Date().toISOString().split('T')[0], group: "BD", empId: "", name: "", shift: "08:45:00", woNo: "", dept: "工程", type: "CMBD", content: "", location: "", orderTime: "", startTime: "", endTime: "", status: "完成", ot: "No", responseTime: "00:05:00", resTime: "" }];
+        // 2026 星際酒店數據庫 (修正版)
+        const STAR_MAP = [
+            { key: 'Passion', loc: 'Passion', dept: 'F&B' },
+            { key: '翠華', loc: '1/F 翠華餐廳', dept: 'F&B' },
+            { key: '有食辰', loc: '1/F 有食辰', dept: 'F&B' },
+            { key: '珍味軒', loc: '1/F 珍味軒', dept: 'F&B' },
+            { key: '丹桂', loc: '2/F 丹桂軒', dept: 'F&B' },
+            { key: '珍淮', loc: '3/F 珍淮閣', dept: 'F&B' },
+            { key: '長勝', loc: '3/F 長勝坊', dept: 'F&B' },
+            { key: '風味', loc: '5/F 風味居', dept: 'F&B' },
+            { key: '天峰', loc: '6/F 天峰軒', dept: 'F&B' },
+            { key: '協成', loc: '10/F 協成火鍋', dept: 'F&B' },
+            { key: '品味坊', loc: '16/F 品味坊', dept: 'F&B' },
+            { key: '品味吧', loc: '16/F 品味吧', dept: 'F&B' },
+            { key: '泳池', loc: '17/F 泳池及健身中心', dept: 'front office' },
+            { key: 'Gym', loc: '17/F 泳池及健身中心', dept: 'front office' },
+            { key: '房', loc: '客房', dept: 'Housekeeping' }
+        ];
+
+        let rowData = [{ id: 1, date: new Date().toISOString().split('T')[0], group: "BD", empId: "7620", name: "堯", shift: "08:45:00", woNo: "", dept: "工程", type: "CMBD", content: "", location: "", orderTime: "", startTime: "", endTime: "", status: "完成", ot: "No", responseTime: "00:05:00", resTime: "" }];
 
         function renderTable() {
             const body = document.getElementById('tableBody');
-            body.innerHTML = rowData.map((row, idx) => `
-                <tr class="hover:bg-slate-50/80">
-                    <td class="p-2 border-r text-center font-bold text-slate-300">${row.id}</td>
-                    ${cols.slice(1).map(c => `<td class="p-1 border-r ${c==='orderTime'?'bg-amber-50/30':''}"><input type="text" value="${row[c] || ''}" onchange="updateData(${idx}, '${c}', this.value)"></td>`).join('')}
+            body.innerHTML = rowData.map((row, i) => `
+                <tr class="bg-white border-4 border-slate-200 rounded-[40px] shadow-sm overflow-hidden">
+                    <td class="p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <span class="bg-blue-600 text-white px-6 py-2 rounded-full font-black text-xl uppercase tracking-widest">Order #${row.id}</span>
+                            <button onclick="deleteRow(${i})" class="text-rose-500 font-bold text-xl hover:underline italic">🗑️ Delete Row</button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                            <div class="space-y-1"><label class="text-xs font-black text-slate-400 uppercase">部門 Dept</label><input type="text" value="${row.dept}" onchange="update(${i}, 'dept', this.value)"></div>
+                            <div class="space-y-1"><label class="text-xs font-black text-amber-500 uppercase underline">接單 Order (Anchor)</label><input type="text" value="${row.orderTime}" placeholder="HH:MM" onchange="update(${i}, 'orderTime', this.value)" class="bg-amber-50 border-amber-200"></div>
+                            <div class="space-y-1"><label class="text-xs font-black text-slate-400 uppercase">開始 Start</label><input type="text" value="${row.startTime}" onchange="update(${i}, 'startTime', this.value)"></div>
+                            <div class="space-y-1"><label class="text-xs font-black text-slate-400 uppercase">完成 End</label><input type="text" value="${row.endTime}" onchange="update(${i}, 'endTime', this.value)"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="bg-blue-50 p-6 rounded-3xl border-2 border-blue-100">
+                                <label class="block text-sm font-black text-blue-600 mb-2 italic">🛠️ 工作內容 Content</label>
+                                <input type="text" value="${row.content}" onchange="update(${i}, 'content', this.value)" class="bg-transparent border-none text-3xl font-black text-blue-900 focus:ring-0">
+                            </div>
+                            <div class="bg-emerald-50 p-6 rounded-3xl border-2 border-emerald-100">
+                                <label class="block text-sm font-black text-emerald-600 mb-2 italic">📍 地點 Location</label>
+                                <input type="text" value="${row.location}" onchange="update(${i}, 'location', this.value)" class="bg-transparent border-none text-3xl font-black text-emerald-900 focus:ring-0">
+                            </div>
+                        </div>
+                    </td>
                 </tr>`).join('');
-            calcTotal();
+            calc();
         }
 
-        function updateData(idx, c, v) {
-            rowData[idx][c] = v;
-            if (c === 'orderTime' && v.includes(':')) {
-                let [h, m] = v.split(':').map(Number);
-                let sM = m + 5;
-                let sH = h + Math.floor(sM/60);
-                rowData[idx]['startTime'] = `${String(sH).padStart(2,'0')}:${String(sM%60).padStart(2,'0')}:00`;
-                rowData[idx]['responseTime'] = "00:05:00";
-                if(!rowData[idx]['endTime']) rowData[idx]['endTime'] = `${String(sH+1).padStart(2,'0')}:${String(sM%60).padStart(2,'0')}:00`;
+        function update(i, col, val) {
+            rowData[i][col] = val;
+            if (col === 'orderTime' && val.includes(':')) {
+                let [h, m] = val.split(':').map(Number);
+                let sm = m + 5;
+                rowData[i].startTime = `${String(h + Math.floor(sm/60)).padStart(2,'0')}:${String(sm%60).padStart(2,'0')}:00`;
+                if(!rowData[i].endTime) rowData[i].endTime = `${String(h+1).padStart(2,'0')}:${String(sm%60).padStart(2,'0')}:00`;
                 renderTable();
             }
-            calcTotal();
+            calc();
         }
 
-        function calcTotal() {
+        function calc() {
             let total = 0;
             rowData.forEach(r => {
-                if (r.startTime && r.endTime) {
-                    let s = new Date(`2000/01/01 ${r.startTime}`).getTime();
-                    let e = new Date(`2000/01/01 ${r.endTime}`).getTime();
-                    if (e > s) {
-                        let d = (e - s) / 1000 / 60;
-                        total += d / 60;
-                        r.resTime = Math.floor(d/60).toString().padStart(2,'0') + ":" + (d%60).toString().padStart(2,'0') + ":00";
-                    }
+                if(r.startTime && r.endTime) {
+                    let s = new Date('2000/01/01 ' + r.startTime).getTime();
+                    let e = new Date('2000/01/01 ' + r.endTime).getTime();
+                    if(e > s) total += (e - s) / 3600000;
                 }
             });
-            const d = document.getElementById('totalHours');
-            d.innerText = total.toFixed(1);
-            d.className = total >= 7 ? "text-3xl font-black text-emerald-600" : "text-3xl font-black text-rose-600";
-        }
-
-        function addNewRow() {
-            const last = rowData[rowData.length - 1];
-            rowData.push({ ...last, id: rowData.length + 1, content: "", location: "", orderTime: "", startTime: "", endTime: "", resTime: "" });
-            renderTable();
+            const disp = document.getElementById('totalHours');
+            disp.innerText = total.toFixed(1);
+            disp.className = total >= 7 ? "text-6xl font-black text-emerald-600" : "text-6xl font-black text-rose-600";
         }
 
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (Speech) {
             const rec = new Speech();
-            rec.lang = 'zh-HK'; rec.continuous = true; rec.interimResults = true;
+            rec.lang = 'zh-HK'; rec.interimResults = true;
             let isRec = false;
+
             document.getElementById('micBtn').onclick = () => { if (isRec) rec.stop(); else rec.start(); };
-            rec.onstart = () => { isRec = true; document.getElementById('micBtn').classList.add('recording-active'); document.getElementById('statusTag').innerText="REC"; };
+            rec.onstart = () => { isRec = true; document.getElementById('micBtn').classList.add('recording-active'); document.getElementById('micIcon').innerText = "🛑"; };
             rec.onresult = (e) => {
                 let t = Array.from(e.results).map(r => r[0].transcript).join('');
                 document.getElementById('rawDisplay').innerText = t;
                 let r = rowData[rowData.length - 1];
-                if (t.match(/餐飲|FB|F&B/i)) r.dept = "F&B"; else r.dept = "工程";
-                const jobs = ["執油", "補水泥", "漏水", "換燈", "早會"];
-                jobs.forEach(j => { if (t.includes(j)) r.content = j; });
-                const loc = t.match(/(\d+)\s*(樓|f|字樓|房)/i); if (loc) r.location = loc[0];
-                const tm = t.match(/(\d{1,2})[:點](\d{1,2}|半|[一二三四五六七八九十]|[\d])/);
-                if (tm) {
-                    let hh = tm[1].padStart(2,'0'), mm = tm[2] === "半" ? "30" : (isNaN(tm[2]) ? "00" : tm[2].padStart(2,'0'));
-                    updateData(rowData.length - 1, 'orderTime', `${hh}:${mm}:00`);
+                STAR_MAP.forEach(item => { if(t.includes(item.key)) { r.location = item.loc; r.dept = item.dept; } });
+                const tm = t.match(/(\d{1,2})[:點](\d{1,2}|半)/);
+                if(tm) update(rowData.length - 1, 'orderTime', `${tm[1].padStart(2,'0')}:${tm[2]==='半'?'30':tm[2].padStart(2,'0')}`);
+                const dur = t.match(/(一個半|一|兩|半)\s*(個半小時|小時|粒鐘|個鐘)/);
+                if(dur && r.startTime) {
+                    let m = dur[1]==='一個半'?90:(dur[1]==='半'?30:(dur[1]==='兩'?120:60));
+                    let [sh, sm] = r.startTime.split(':').map(Number);
+                    let totalM = sm + m;
+                    r.endTime = `${String(sh + Math.floor(totalM/60)).padStart(2,'0')}:${String(totalM%60).padStart(2,'0')}:00`;
                 }
+                const job = t.match(/(內容係|內容就係|去|做|裝|掛|維修)\s*([\u4e00-\u9fa5\w]{2,15})/);
+                if(job) r.content = job[2];
                 renderTable();
             };
-            rec.onend = () => { isRec = false; document.getElementById('micBtn').classList.remove('recording-active'); document.getElementById('statusTag').innerText="STANDBY"; };
+            rec.onend = () => { isRec = false; document.getElementById('micBtn').classList.remove('recording-active'); document.getElementById('micIcon').innerText = "🎤"; };
         }
 
         function copyToExcel() {
-            let tsv = rowData.map(r => cols.map(c => r[c] || "").join("\t")).join("\n");
-            navigator.clipboard.writeText(tsv).then(() => alert("✅ 已複製！去 Excel 撳 Ctrl+V 貼上。"));
+            const cols = ["id", "date", "group", "empId", "name", "shift", "woNo", "dept", "type", "content", "location", "orderTime", "startTime", "endTime", "status", "ot", "responseTime", "resTime"];
+            let t = rowData.map(r => cols.map(c => r[c] || "").join("\t")).join("\n");
+            navigator.clipboard.writeText(t).then(() => alert("✅ 18 欄位已成功複製！\n請切換到 Excel 按 Ctrl+V 貼上。"));
         }
+        function addNewRow() { rowData.push({...rowData[rowData.length-1], id: rowData.length+1, content:"", location:"", orderTime:"", startTime:"", endTime:""}); renderTable(); }
+        function deleteRow(i) { if(confirm("確定刪除此行？")) { rowData.splice(i,1); renderTable(); } }
         renderTable();
     </script>
 </body>
